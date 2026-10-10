@@ -29,9 +29,10 @@ NP_DOMAIN=nutriplan.example.org NP_ACME_EMAIL=me@example.org ./install.sh
 For a **local test** leave the domain empty (it becomes `localhost`) and open
 `https://localhost` (self-signed certificate: accept the browser warning).
 
-The script is **idempotent**: you can run it again at any time. It never
-overwrites an existing `.env` or the `data/` folder, and only restarts what
-changed.
+`install.sh` is always a **clean installation**. If it finds a previous
+installation (`.env`, `data/` folder or Nutriplan containers) it asks you to type
+`yes` and then **deletes everything** (database, documents, certificates) before
+installing. For unattended use set `NP_CONFIRM_RESET=yes`.
 
 ## Data
 
@@ -41,8 +42,14 @@ database user: use `sudo` to copy it, or `pg_dump` (see below).
 
 ## Update
 
-Unzip a newer `install.zip` over this folder (`.env` and `data/` are kept) and run
-`./install.sh` again.
+Do **not** run `install.sh` (it resets everything). Unzip the newer `install.zip`
+over this folder (`.env` and `data/` are kept), then:
+
+```bash
+sed -i "s|^NUTRIPLAN_IMAGE=.*|$(cat release.conf)|" .env
+docker compose --env-file .env -f docker-compose.yml pull
+docker compose --env-file .env -f docker-compose.yml up -d
+```
 
 ## Everyday commands
 
@@ -57,6 +64,6 @@ docker compose --env-file .env -f docker-compose.yml exec db \
 
 ## Configuration
 
-Edit `.env`, then run `./install.sh`. Every variable is documented in
+Edit `.env`, then `docker compose --env-file .env -f docker-compose.yml up -d`. Every variable is documented in
 `.env.example` and marked `[COMMON]`, `[DEV]` or `[PROD]` (only `[COMMON]` and
 `[PROD]` matter here).

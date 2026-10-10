@@ -85,14 +85,23 @@ unzip install.zip
 cd install
 ./install.sh
 ```
-`install.sh` chiede il dominio e un'e-mail per Let's Encrypt, genera password casuali robuste per database e amministratore, scarica le immagini, avvia tutto e attende che il backend sia pronto. Alla fine stampa l'URL e la **password dell'amministratore** (salvata anche in `.env`, permessi 600). Per installazioni non interattive: `NP_DOMAIN=... NP_ACME_EMAIL=... ./install.sh`.
+`install.sh` è sempre un'**installazione pulita**. Su una cartella pulita chiede il dominio e un'e-mail per Let's Encrypt, genera password casuali robuste per database e amministratore, scarica le immagini, avvia tutto e attende che l'applicazione sia pronta.
+
+> ⚠ Se trova una installazione precedente (impostazioni, cartella dati o container Nutriplan) chiede una conferma esplicita (`yes`) e poi **cancella tutto** – database, documenti, certificati – prima di installare. Per l'uso non interattivo: `NP_CONFIRM_RESET=yes`. Alla fine stampa l'URL e la **password dell'amministratore** (salvata anche in `.env`, permessi 600). Per installazioni non interattive: `NP_DOMAIN=... NP_ACME_EMAIL=... ./install.sh`.
 
 **Prova in locale sul proprio PC**: lascia vuoto il dominio (diventa `localhost`) e apri `https://localhost`; il certificato è autofirmato, quindi accetta l'avviso del browser. L'app risponde anche su `https://localhost` e sull'indirizzo IP del server (es. `https://192.168.0.10` da un altro PC o telefono della LAN, con l'avviso del certificato autofirmato); con un dominio vero usa quel nome.
 
 Su una nuova installazione esiste solo l'utente `admin`: accedi e crea o attiva i medici dalla pagina **Utenti** (i medici possono anche registrarsi da soli; l'account resta disattivato finché l'admin non lo attiva).
 
-### C. Aggiornare
-Decomprimi il nuovo `install.zip` sopra la cartella `install` esistente (`.env` e `data/` vengono mantenuti) ed esegui di nuovo `./install.sh`: scarica la nuova immagine e riavvia i container.
+### C. Aggiornare (mantenendo i dati)
+`install.sh` azzera tutto, quindi per passare a una nuova release **senza perdere i dati** non va eseguito. Decomprimi il nuovo `install.zip` sopra la cartella esistente (`.env` e `data/` non sono nello zip, quindi restano) e applica la nuova immagine:
+```bash
+cd install
+unzip -o ../install.zip -d ..                                  # o dove si trova il nuovo zip
+sed -i "s|^NUTRIPLAN_IMAGE=.*|$(cat release.conf)|" .env       # usa l'immagine della nuova release
+docker compose --env-file .env -f docker-compose.yml pull
+docker compose --env-file .env -f docker-compose.yml up -d
+```
 
 ### D. Gestione
 ```bash

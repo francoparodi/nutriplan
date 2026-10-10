@@ -1,16 +1,20 @@
 #!/usr/bin/env bash
-# Nutriplan installer / updater (production). Idempotent: safe to run any number of times.
+# Nutriplan installer (production): CLEAN installation.
 #
 # Usage, from the folder where install.zip was unpacked:
 #     ./install.sh
 #
-# First run : creates .env (asks for the domain and an e-mail, generates the
-#             database and admin passwords), downloads the Docker images and
-#             starts the application with HTTPS (Traefik + Let's Encrypt).
-# Later runs: never touch an existing .env value or the data folder; they only
-#             apply what changed (new release in release.conf, edited .env).
+# It always performs a clean install: if a previous installation is found
+# (.env, data folder or Nutriplan containers) it is REMOVED - database, uploaded
+# documents, certificates and settings - after an explicit confirmation.
+# On a clean folder it just installs, without asking anything.
 #
-# Non-interactive use: NP_DOMAIN=nutriplan.example.org NP_ACME_EMAIL=me@example.org ./install.sh
+# Then it asks for the domain and an e-mail, generates the database and administrator
+# passwords, downloads the Docker images and starts the application with HTTPS
+# (Traefik + Let's Encrypt).
+#
+# Non-interactive use:
+#     NP_CONFIRM_RESET=yes NP_DOMAIN=nutriplan.example.org NP_ACME_EMAIL=me@example.org ./install.sh
 set -euo pipefail
 cd "$(dirname "$0")"
 
@@ -52,86 +56,85 @@ setvar() {  # setvar KEY VALUE [file]: replace the value or append the line
   fi
 }
 is_placeholder() { case "$1" in ""|nutriplan.example.com|admin@example.com) return 0;; *) return 1;; esac; }
+wipe_dir() {  # remove a folder whose files belong to the database user (needs no sudo: done inside Docker)
+  local d="$1" abs
+  [ -e "$d" ] || return 0
+  abs="$(cd "$d" && pwd)"
+  docker run --rm -v "$abs":/wipe --entrypoint sh "${WIPE_IMAGE:-postgres:16-alpine}" -c 'rm -rf /wipe/* /wipe/.[!.]* 2>/dev/null; true'
+  rmdir "$abs" 2>/dev/null || rm -rf "$abs" 2>/dev/null || true
+}
 
-GENERATED_ADMIN_PW=""
-NEW_ENV=0
+# ---------------------------------------------------------------- previous installation?
+OLD_DATA="$(getvar PROD_DATA_DIR)"; OLD_DATA="${OLD_DATA:-./data}"
+CONTAINERS="$(docker ps -a --format '{{.Names}}' | grep -E '^nutriplan-(traefik|db|backend-and-frontend)$' || true)"
+FOUND=()
+[ -f .env ] && FOUND+=("settings (.env)")
+[ -e "$OLD_DATA/postgres" ] && FOUND+=("database and data folder ($OLD_DATA)")
+[ -e "$OLD_DATA/letsencrypt" ] && FOUND+=("TLS certificates ($OLD_DATA/letsencrypt)")
+[ -z "$CONTAINERS" ] || FOUND+=("Nutriplan containers: $(echo $CONTAINERS | tr '\n' ' ')")
 
-# ---------------------------------------------------------------- .env (created atomically)
-if [ ! -f .env ]; then
-  # Without .env but with an existing database folder a new random password would not match it.
-  DATA_DIR_GUESS="${NP_DATA_DIR:-./data}"
-  if [ -e "$DATA_DIR_GUESS/postgres" ]; then
-    die "$DATA_DIR_GUESS/postgres already exists but .env is missing. Restore your original .env (it holds the database password), or move/remove the data folder to start from scratch."
+if [ "${#FOUND[@]}" -gt 0 ]; then
+  echo
+  warn "A previous Nutriplan installation was found:"
+  for f in "${FOUND[@]}"; do echo "      - $f"; done
+  echo
+  warn "A CLEAN INSTALL DELETES ALL OF IT: users, patients, diets, diaries, documents, certificates."
+  warn "This cannot be undone. If you need the data, abort now and make a backup first"
+  warn "(in the app: Backup, or: docker compose exec db pg_dump -U nutriplan nutriplan > backup.sql)."
+  echo
+  if [ "${NP_CONFIRM_RESET:-}" != "yes" ]; then
+    [ -t 0 ] || die "Confirmation required: run from a terminal, or set NP_CONFIRM_RESET=yes."
+    read -r -p "Type 'yes' to delete everything and install from scratch: " ANSWER
+    [ "$ANSWER" = "yes" ] || die "Aborted. Nothing was changed."
   fi
-  say "First installation: creating .env"
-  NEW_ENV=1
-  TMP_ENV="$(mktemp .env.XXXXXX)"
-  trap 'rm -f "$TMP_ENV"' EXIT
-  cp .env.example "$TMP_ENV"
-  setvar POSTGRES_PASSWORD "$(rand 24)" "$TMP_ENV"
-  GENERATED_ADMIN_PW="$(rand 12)"
-  setvar ADMIN_PASSWORD "$GENERATED_ADMIN_PW" "$TMP_ENV"
-  setvar SEED_DEMO false "$TMP_ENV"
-  setvar PROD_SEED_DEMO false "$TMP_ENV"
-  [ -z "${NP_DATA_DIR:-}" ] || setvar PROD_DATA_DIR "$NP_DATA_DIR" "$TMP_ENV"
-  chmod 600 "$TMP_ENV"
-  mv "$TMP_ENV" .env      # .env appears only when complete: an interrupted run leaves no half state
-  trap - EXIT
-else
-  # Variables introduced by a newer release are appended with their default value.
-  while IFS= read -r line; do
-    case "$line" in ""|\#*) continue;; esac
-    key="${line%%=*}"
-    grep -qE "^$key=" .env || { printf '%s\n' "$line" >> .env; warn "New setting added to .env: $key"; }
-  done < .env.example
-  chmod 600 .env
+
+  say "Removing the previous installation"
+  if [ -f .env ]; then "${COMPOSE[@]}" down --remove-orphans >/dev/null 2>&1 || true; fi
+  for c in $CONTAINERS; do docker rm -f "$c" >/dev/null 2>&1 || true; done
+  wipe_dir "$OLD_DATA"
+  rm -f .env
 fi
 
-# domain / e-mail: explicit NP_* variables win, otherwise keep .env, otherwise ask
-DOMAIN="$(getvar DOMAIN)"; ACME="$(getvar ACME_EMAIL)"
-[ -z "${NP_DOMAIN:-}" ] || DOMAIN="$NP_DOMAIN"
-[ -z "${NP_ACME_EMAIL:-}" ] || ACME="$NP_ACME_EMAIL"
-if is_placeholder "$DOMAIN" || is_placeholder "$ACME"; then
+# ---------------------------------------------------------------- new .env (created atomically)
+say "Creating the configuration (.env)"
+TMP_ENV="$(mktemp .env.XXXXXX)"
+trap 'rm -f "$TMP_ENV"' EXIT
+cp .env.example "$TMP_ENV"
+setvar POSTGRES_PASSWORD "$(rand 24)" "$TMP_ENV"
+ADMIN_PW="$(rand 12)"
+setvar ADMIN_PASSWORD "$ADMIN_PW" "$TMP_ENV"
+setvar SEED_DEMO false "$TMP_ENV"
+setvar PROD_SEED_DEMO false "$TMP_ENV"
+[ -z "${NP_DATA_DIR:-}" ] || setvar PROD_DATA_DIR "$NP_DATA_DIR" "$TMP_ENV"
+[ -z "${NUTRIPLAN_IMAGE:-}" ] || setvar NUTRIPLAN_IMAGE "$NUTRIPLAN_IMAGE" "$TMP_ENV"
+
+# domain / e-mail: explicit NP_* variables, otherwise ask
+DOMAIN="${NP_DOMAIN:-}"; ACME="${NP_ACME_EMAIL:-}"
+if is_placeholder "$DOMAIN"; then
   if [ -t 0 ]; then
-    if is_placeholder "$DOMAIN"; then
-      echo "Public domain name of the application (e.g. nutriplan.example.org)."
-      read -r -p "Leave empty for a LOCAL test on this machine (localhost): " DOMAIN
-      DOMAIN="${DOMAIN:-localhost}"
-    fi
-    if is_placeholder "$ACME"; then
-      case "$DOMAIN" in
-        localhost|127.*|*.local) ACME="local-test@example.org" ;;   # no certificate is requested for local names
-        *) read -r -p "E-mail for Let's Encrypt certificate notices: " ACME ;;
-      esac
-    fi
+    echo "Public domain name of the application (e.g. nutriplan.example.org)."
+    read -r -p "Leave empty for a LOCAL test on this machine (localhost): " DOMAIN
+    DOMAIN="${DOMAIN:-localhost}"
   else
-    # no terminal: a local test is the only thing that can be configured without asking
-    if is_placeholder "$DOMAIN"; then DOMAIN="localhost"; warn "DOMAIN not set: using localhost (set NP_DOMAIN to change)"; fi
-    if is_placeholder "$ACME"; then
-      case "$DOMAIN" in
-        localhost|127.*|*.local) ACME="local-test@example.org" ;;
-        *) die "ACME_EMAIL is not set and there is no terminal: set NP_ACME_EMAIL or edit .env, then re-run." ;;
-      esac
-    fi
+    DOMAIN="localhost"; warn "DOMAIN not set: using localhost (set NP_DOMAIN to change)"
   fi
 fi
-# a bare name like "nutriplan" is not a real domain: the browser must be able to resolve it
+case "$DOMAIN" in
+  localhost|127.*|*.local) is_placeholder "$ACME" && ACME="local-test@example.org" ;;   # no certificate is requested for local names
+  *) if is_placeholder "$ACME"; then
+       [ -t 0 ] || die "ACME_EMAIL is not set and there is no terminal: set NP_ACME_EMAIL."
+       read -r -p "E-mail for Let's Encrypt certificate notices: " ACME
+     fi ;;
+esac
 case "$DOMAIN" in
   localhost|*.*|*:*) ;;
   *) warn "DOMAIN '$DOMAIN' has no dot: it only works if your machines resolve that name (e.g. /etc/hosts). Use 'localhost' for a local test." ;;
 esac
-setvar DOMAIN "$DOMAIN"
-setvar ACME_EMAIL "$ACME"
-
-# the image of this release
-if [ -n "${NUTRIPLAN_IMAGE:-}" ]; then setvar NUTRIPLAN_IMAGE "$NUTRIPLAN_IMAGE"; fi
-
-# ---------------------------------------------------------------- validation
-bad() { die "$1 Edit .env and run ./install.sh again."; }
-is_placeholder "$DOMAIN" && bad "DOMAIN is not set."
-is_placeholder "$ACME" && bad "ACME_EMAIL is not set."
-case "$(getvar POSTGRES_PASSWORD)" in ""|nutriplan|changeme) bad "POSTGRES_PASSWORD is empty or still the default value.";; esac
-case "$(getvar ADMIN_PASSWORD)" in ""|admin123) bad "ADMIN_PASSWORD is empty or still the default value.";; esac
+setvar DOMAIN "$DOMAIN" "$TMP_ENV"
+setvar ACME_EMAIL "$ACME" "$TMP_ENV"
+chmod 600 "$TMP_ENV"
+mv "$TMP_ENV" .env
+trap - EXIT
 
 DATA_DIR="$(getvar PROD_DATA_DIR)"; DATA_DIR="${DATA_DIR:-./data}"
 mkdir -p "$DATA_DIR"
@@ -156,7 +159,6 @@ for _ in $(seq 1 60); do
 done
 [ -n "$ok" ] || { "${COMPOSE[@]}" logs --tail=40 backend-and-frontend || true; die "The application did not start. See the log above."; }
 
-LAN_IP="$(hostname -I 2>/dev/null | awk '{print $1}' || true)"
 echo
 say "Nutriplan is running"
 cat <<TXT
@@ -169,12 +171,10 @@ TXT
 case "$DOMAIN" in
   localhost|127.*|*.local) cat <<TXT
   Local test        https://localhost on this machine (self-signed certificate: accept the browser warning)
-  From other PCs    https://<IP-of-this-server>, e.g. https://${LAN_IP:-192.168.0.10}  (same warning;
-                    the server firewall must allow ports 80 and 443)
+  From other PCs    https://<IP-of-this-server>  (same warning; the firewall must allow ports 80 and 443)
 TXT
   ;;
   *) cat <<TXT
-  This machine      https://localhost also works (self-signed certificate)
   Requirements      the DNS record of ${DOMAIN} must point to this server and ports 80/443 must be open;
                     the Let's Encrypt certificate is requested on the first visit (up to a minute).
 TXT
@@ -189,16 +189,11 @@ cat <<TXT
   nutriplan-db                      PostgreSQL                 port 5432, internal only (not published)
 
   Data folder       ${DATA_DIR}   (database, documents, certificates: back it up)
+
+  Administrator user : admin
+  Password           : ${ADMIN_PW}     <-- write it down; also stored in .env
+
+Useful commands (run in this folder):
+    docker compose --env-file .env -f docker-compose.yml logs -f backend-and-frontend
+    docker compose --env-file .env -f docker-compose.yml down        # stop (data is kept in ${DATA_DIR})
 TXT
-echo
-if [ -n "$GENERATED_ADMIN_PW" ]; then
-  echo "  Administrator user : admin"
-  echo "  Password           : ${GENERATED_ADMIN_PW}     <-- write it down; also stored in .env"
-else
-  echo "  Administrator user : admin   (initial password: ADMIN_PASSWORD in .env;"
-  echo "                                it is only used on an empty database, the app may have changed it)"
-fi
-echo
-echo "Useful commands (run in this folder):"
-echo "    docker compose --env-file .env -f docker-compose.yml logs -f backend-and-frontend"
-echo "    docker compose --env-file .env -f docker-compose.yml down        # stop (data is kept in ${DATA_DIR})"

@@ -85,14 +85,23 @@ unzip install.zip
 cd install
 ./install.sh
 ```
-`install.sh` asks for the domain and a Let's Encrypt e-mail, generates strong random database and administrator passwords, downloads the images, starts everything and waits until the backend is healthy. At the end it prints the URL and the **administrator password** (also stored in `.env`, mode 600). For unattended installs: `NP_DOMAIN=... NP_ACME_EMAIL=... ./install.sh`.
+`install.sh` is always a **clean installation**. On a clean folder it asks for the domain and a Let's Encrypt e-mail, generates strong random database and administrator passwords, downloads the images, starts everything and waits until the application is healthy.
+
+> ⚠ If a previous installation is found (settings, data folder or Nutriplan containers) it asks for an explicit confirmation (`yes`) and then **deletes everything** – database, documents, certificates – before installing. For unattended use: `NP_CONFIRM_RESET=yes`. At the end it prints the URL and the **administrator password** (also stored in `.env`, mode 600). For unattended installs: `NP_DOMAIN=... NP_ACME_EMAIL=... ./install.sh`.
 
 **Local test on your own PC**: leave the domain empty (it becomes `localhost`) and open `https://localhost`; the certificate is self-signed, so accept the browser warning. The app also answers on `https://localhost` and on the server's raw IP address (e.g. `https://192.168.0.10` from another PC or phone on the LAN, self-signed certificate warning); with a real domain, use that name.
 
 On a fresh install only the `admin` user exists: log in and create or activate doctors from the **Users** page (doctors can also self-register; their account stays disabled until the admin activates it).
 
-### C. Update
-Unzip the new `install.zip` over the existing `install` folder (your `.env` and `data/` are kept) and run `./install.sh` again: it pulls the new image and restarts the containers.
+### C. Update (keeping the data)
+`install.sh` resets everything, so to move to a new release **without losing data** do not run it. Unzip the new `install.zip` over the existing folder (`.env` and `data/` are not in the zip, so they are kept) and apply the new image:
+```bash
+cd install
+unzip -o ../install.zip -d ..                                  # or wherever the new zip is
+sed -i "s|^NUTRIPLAN_IMAGE=.*|$(cat release.conf)|" .env       # use the image of the new release
+docker compose --env-file .env -f docker-compose.yml pull
+docker compose --env-file .env -f docker-compose.yml up -d
+```
 
 ### D. Operations
 ```bash
