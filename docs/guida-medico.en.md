@@ -32,7 +32,7 @@ If the patient has uploaded a profile photo it appears next to their name in the
 **Diets** lists all plans. You can **edit**, **duplicate**, **assign**, download the **PDF** or **delete**.
 
 ### Import a diet from PDF
-In the **Diets** page, **Import from PDF** uploads `Franco.pdf` or `Giorgia.pdf`: the ready-made diet is created as a **template** (not assigned to any patient) and opens in the editor. Only these two plans are recognised at the moment; other PDFs are rejected.
+In the **Diets** page, **Import from PDF** uploads `Franco.pdf` or `Giorgia.pdf`: the ready-made diet is created as a **template** (not assigned to any patient) and opens in the editor. The **Example PDF** button downloads `Franco.pdf`, to use as a test. Only these two plans are recognised at the moment; other PDFs are rejected.
 
 ### Plan structure
 - **Meals**: breakfast, lunch, dinner… each with time and notes. A meal can be “same as” another (e.g. dinner as lunch). *Extra* meals (oil, dessert…) are optional.

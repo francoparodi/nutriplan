@@ -4,6 +4,17 @@ import { useDialogs } from "./Dialogs";
 import { Icon } from "./Icon";
 import { useI18n } from "../i18n";
 
+/** Downloads the example PDF (Franco.pdf) that can be uploaded with the import button. */
+export function SamplePdfButton() {
+  const { t } = useI18n();
+  const { run } = useDialogs();
+  return (
+    <button className="btn" title={t("sample_pdf_help")} onClick={() => void run(() => api.download("/api/diets/sample-pdf", "Franco.pdf"))}>
+      <Icon name="download" />{t("sample_pdf")}
+    </button>
+  );
+}
+
 /** Uploads a PDF meal plan (Franco.pdf / Giorgia.pdf) and creates the diet as a template. */
 export function ImportPdfButton({ onImported }: { onImported: (dietId: string) => void }) {
   const { t } = useI18n();

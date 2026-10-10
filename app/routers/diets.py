@@ -1,8 +1,9 @@
 import uuid
 from datetime import date, timedelta
+from pathlib import Path
 
 from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
-from fastapi.responses import Response
+from fastapi.responses import FileResponse, Response
 from pydantic import BaseModel
 from sqlalchemy import select, delete
 from sqlalchemy.orm import Session
@@ -54,6 +55,19 @@ def create_diet(body: DietIn, request: Request, user: User = Depends(doctor_user
     save_diet(db, user, d, body)
     audit(db, user, "diet_create", "diet", d.name, request)
     return diet_to_dict(db, d)
+
+
+SAMPLE_PDF = Path(__file__).resolve().parent.parent / "samples" / "Franco.pdf"
+
+
+@router.get("/sample-pdf")
+def sample_pdf(user: User = Depends(active_user)):
+    """Example PDF (Franco.pdf) that can be uploaded with "Import from PDF"."""
+    if user.role not in ("doctor", "admin"):
+        raise HTTPException(403, "forbidden")
+    if not SAMPLE_PDF.exists():
+        raise HTTPException(404, "not_found")
+    return FileResponse(SAMPLE_PDF, media_type="application/pdf", filename="Franco.pdf")
 
 
 def import_pdf_for(db: Session, doctor: User, data: bytes, filename: str, request: Request) -> Diet:

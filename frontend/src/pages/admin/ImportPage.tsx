@@ -3,6 +3,7 @@ import { api } from "../../api";
 import { Field, FileButton, Spinner } from "../../components/Common";
 import { useDialogs } from "../../components/Dialogs";
 import { Icon } from "../../components/Icon";
+import { SamplePdfButton } from "../../components/ImportPdf";
 import { useI18n } from "../../i18n";
 import { usePageTitle } from "../../layout/Title";
 import { useAsync } from "../../lib/useAsync";
@@ -50,7 +51,7 @@ export function ImportDietsPage() {
           <div className="f"><span>{t("import_pdf_files")}</span>
             <FileButton multiple accept="application/pdf,.pdf" files={files} onChange={setFiles} />
           </div>
-          <div><button className="btn primary" onClick={() => void submit()}><Icon name="upload" />{t("import_pdf")}</button></div>
+          <div className="row"><button className="btn primary" onClick={() => void submit()}><Icon name="upload" />{t("import_pdf")}</button><SamplePdfButton /></div>
         </div>
       )}
       {results.length > 0 && <ul className="mt">{results.map((r, i) => <li key={i}>{r}</li>)}</ul>}

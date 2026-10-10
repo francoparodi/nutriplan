@@ -473,3 +473,14 @@ def test_import_diet_from_pdf(login, app_client):
     # le diete importate sono visibili al medico come modelli
     names = [x["name"] for x in med.get("/api/diets").json() if x["patient_id"] is None]
     assert names.count("Piano alimentare - Parodi Franco") >= 2
+
+
+def test_sample_pdf_download_and_roundtrip(login):
+    med, adm, fr = login("medico"), login("admin"), login("franco")
+    r = med.get("/api/diets/sample-pdf")
+    assert r.status_code == 200 and r.content[:4] == b"%PDF" and "Franco.pdf" in r.headers["content-disposition"]
+    assert adm.get("/api/diets/sample-pdf").status_code == 200
+    assert fr.get("/api/diets/sample-pdf").status_code == 403
+    # the example is exactly what the importer recognises
+    up = med.post("/api/diets/import-pdf", files={"file": ("Franco.pdf", r.content, "application/pdf")})
+    assert up.status_code == 200 and up.json()["name"] == "Piano alimentare - Parodi Franco"

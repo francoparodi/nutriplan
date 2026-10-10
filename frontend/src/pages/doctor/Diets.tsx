@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { api } from "../../api";
 import { Field, FileButton, Spinner } from "../../components/Common";
-import { ImportPdfButton } from "../../components/ImportPdf";
+import { ImportPdfButton, SamplePdfButton } from "../../components/ImportPdf";
 import { useDialogs } from "../../components/Dialogs";
 import { Icon } from "../../components/Icon";
 import { useI18n } from "../../i18n";
@@ -43,6 +43,7 @@ export function DietsPage() {
       <div className="row spread mb">
         <h2 style={{ margin: 0 }}>{t("diets")}</h2>
         <div className="row">
+          <SamplePdfButton />
           <ImportPdfButton onImported={(id) => nav(`/diets/${id}`)} />
           <button className="btn primary" onClick={async () => { const id = await createDiet(null); if (id) nav(`/diets/${id}`); }}>
             <Icon name="plus" />{t("new_diet")}

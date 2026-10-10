@@ -10,5 +10,5 @@ data/
 dist/
 
 # Personal source documents (health data of real people): kept locally, not published
-Franco.pdf
-Giorgia.pdf
+/Franco.pdf
+/Giorgia.pdf
