@@ -10,6 +10,7 @@ import { PatientPage } from "./pages/doctor/PatientPage";
 import { BackupPage, DietsPage } from "./pages/doctor/Diets";
 import { DietEditorPage } from "./pages/doctor/DietEditor";
 import { DashboardPage, LogsPage, UsersPage } from "./pages/admin/AdminPages";
+import { ImportDietsPage } from "./pages/admin/ImportPage";
 import { HOME } from "./lib/home";
 
 export function App() {
@@ -61,6 +62,7 @@ export function App() {
             <Route path="/admin/users" element={<UsersPage />} />
             <Route path="/admin/logs" element={<LogsPage />} />
             <Route path="/admin/logs/:tab" element={<LogsPage />} />
+            <Route path="/admin/import" element={<ImportDietsPage />} />
             <Route path="/admin/backup" element={<BackupPage admin />} />
           </>
         )}

@@ -26,6 +26,9 @@ It prints the URL and the administrator password at the end (also stored in
 NP_DOMAIN=nutriplan.example.org NP_ACME_EMAIL=me@example.org ./install.sh
 ```
 
+For a **local test** leave the domain empty (it becomes `localhost`) and open
+`https://localhost` (self-signed certificate: accept the browser warning).
+
 The script is **idempotent**: you can run it again at any time. It never
 overwrites an existing `.env` or the `data/` folder, and only restarts what
 changed.
@@ -46,7 +49,7 @@ Unzip a newer `install.zip` over this folder (`.env` and `data/` are kept) and r
 Run them in this folder:
 
 ```bash
-docker compose --env-file .env -f docker-compose.yml logs -f backend   # logs
+docker compose --env-file .env -f docker-compose.yml logs -f backend-and-frontend   # logs
 docker compose --env-file .env -f docker-compose.yml down              # stop (data is kept)
 docker compose --env-file .env -f docker-compose.yml exec db \
   pg_dump -U nutriplan nutriplan > backup.sql                          # SQL backup

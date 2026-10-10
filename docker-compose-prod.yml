@@ -7,11 +7,11 @@
 #     cp .env.example .env            # then set the [PROD] and [COMMON] variables
 #     docker compose -f docker-compose-prod.yml up -d --build
 #
-# Containers: nutriplan-traefik, nutriplan-backend, nutriplan-db
+# Containers: nutriplan-traefik, nutriplan-backend-and-frontend, nutriplan-db
 #
 # Traefik terminates TLS (Let's Encrypt certificates are issued and renewed
 # automatically) and is the ONLY container exposed to the internet (ports 80/443).
-# The backend and the database are reachable only through internal Docker networks.
+# The application and the database are reachable only through internal Docker networks.
 #
 # Data: everything persistent is stored under PROD_DATA_DIR on the host (default ./data).
 #       Back up that folder (or use pg_dump, see README).
@@ -72,8 +72,9 @@ services:
     security_opt:
       - no-new-privileges:true
 
-  backend:
-    container_name: nutriplan-backend
+  backend-and-frontend:
+    # one container: FastAPI API + the compiled React web interface
+    container_name: nutriplan-backend-and-frontend
     # published image (install.zip); "build" is used only when running from a source checkout
     image: ${NUTRIPLAN_IMAGE:-nutriplan-backend:local}
     build: .
@@ -93,7 +94,11 @@ services:
     labels:
       - traefik.enable=true
       - traefik.docker.network=web
-      - traefik.http.routers.nutriplan.rule=Host(`${DOMAIN:?set DOMAIN in .env}`)
+      # DOMAIN, plus localhost and any raw IPv4 address (e.g. https://192.168.0.10 from the LAN).
+      # ("$$" is a literal "$" for Compose)
+      - traefik.http.routers.nutriplan.rule=Host(`${DOMAIN:?set DOMAIN in .env}`) || Host(`localhost`) || HostRegexp(`^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$$`)
+      # ask Let's Encrypt only for the real domain (localhost is served with Traefik's default certificate)
+      - traefik.http.routers.nutriplan.tls.domains[0].main=${DOMAIN}
       - traefik.http.routers.nutriplan.entrypoints=websecure
       - traefik.http.routers.nutriplan.tls.certresolver=le
       - traefik.http.routers.nutriplan.middlewares=nutriplan-headers

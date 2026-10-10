@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { api } from "../../api";
 import { Field, FileButton, Spinner } from "../../components/Common";
+import { ImportPdfButton } from "../../components/ImportPdf";
 import { useDialogs } from "../../components/Dialogs";
 import { Icon } from "../../components/Icon";
 import { useI18n } from "../../i18n";
@@ -41,9 +42,12 @@ export function DietsPage() {
     <div>
       <div className="row spread mb">
         <h2 style={{ margin: 0 }}>{t("diets")}</h2>
-        <button className="btn primary" onClick={async () => { const id = await createDiet(null); if (id) nav(`/diets/${id}`); }}>
-          <Icon name="plus" />{t("new_diet")}
-        </button>
+        <div className="row">
+          <ImportPdfButton onImported={(id) => nav(`/diets/${id}`)} />
+          <button className="btn primary" onClick={async () => { const id = await createDiet(null); if (id) nav(`/diets/${id}`); }}>
+            <Icon name="plus" />{t("new_diet")}
+          </button>
+        </div>
       </div>
       {diets.length === 0 ? <div className="card"><div className="empty">{t("no_diets")}</div></div> : (
         <div className="table-wrap"><table>

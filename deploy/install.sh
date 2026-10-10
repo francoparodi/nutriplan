@@ -92,10 +92,34 @@ DOMAIN="$(getvar DOMAIN)"; ACME="$(getvar ACME_EMAIL)"
 [ -z "${NP_DOMAIN:-}" ] || DOMAIN="$NP_DOMAIN"
 [ -z "${NP_ACME_EMAIL:-}" ] || ACME="$NP_ACME_EMAIL"
 if is_placeholder "$DOMAIN" || is_placeholder "$ACME"; then
-  [ -t 0 ] || die "DOMAIN / ACME_EMAIL are not set and there is no terminal: set NP_DOMAIN and NP_ACME_EMAIL, or edit .env and re-run."
-  is_placeholder "$DOMAIN" && read -r -p "Public domain name of the application (e.g. nutriplan.example.org): " DOMAIN
-  is_placeholder "$ACME" && read -r -p "E-mail for Let's Encrypt certificate notices: " ACME
+  if [ -t 0 ]; then
+    if is_placeholder "$DOMAIN"; then
+      echo "Public domain name of the application (e.g. nutriplan.example.org)."
+      read -r -p "Leave empty for a LOCAL test on this machine (localhost): " DOMAIN
+      DOMAIN="${DOMAIN:-localhost}"
+    fi
+    if is_placeholder "$ACME"; then
+      case "$DOMAIN" in
+        localhost|127.*|*.local) ACME="local-test@example.org" ;;   # no certificate is requested for local names
+        *) read -r -p "E-mail for Let's Encrypt certificate notices: " ACME ;;
+      esac
+    fi
+  else
+    # no terminal: a local test is the only thing that can be configured without asking
+    if is_placeholder "$DOMAIN"; then DOMAIN="localhost"; warn "DOMAIN not set: using localhost (set NP_DOMAIN to change)"; fi
+    if is_placeholder "$ACME"; then
+      case "$DOMAIN" in
+        localhost|127.*|*.local) ACME="local-test@example.org" ;;
+        *) die "ACME_EMAIL is not set and there is no terminal: set NP_ACME_EMAIL or edit .env, then re-run." ;;
+      esac
+    fi
+  fi
 fi
+# a bare name like "nutriplan" is not a real domain: the browser must be able to resolve it
+case "$DOMAIN" in
+  localhost|*.*|*:*) ;;
+  *) warn "DOMAIN '$DOMAIN' has no dot: it only works if your machines resolve that name (e.g. /etc/hosts). Use 'localhost' for a local test." ;;
+esac
 setvar DOMAIN "$DOMAIN"
 setvar ACME_EMAIL "$ACME"
 
@@ -123,28 +147,58 @@ fi
 say "Starting Nutriplan"
 "${COMPOSE[@]}" up -d --remove-orphans
 
-say "Waiting for the backend to become healthy..."
+say "Waiting for the application to become healthy..."
 ok=""
 for _ in $(seq 1 60); do
-  st="$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' nutriplan-backend 2>/dev/null || echo missing)"
+  st="$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' nutriplan-backend-and-frontend 2>/dev/null || echo missing)"
   if [ "$st" = "healthy" ] || [ "$st" = "running" ]; then ok=1; break; fi
   sleep 2
 done
-[ -n "$ok" ] || { "${COMPOSE[@]}" logs --tail=40 backend || true; die "The backend did not start. See the log above."; }
+[ -n "$ok" ] || { "${COMPOSE[@]}" logs --tail=40 backend-and-frontend || true; die "The application did not start. See the log above."; }
 
+LAN_IP="$(hostname -I 2>/dev/null | awk '{print $1}' || true)"
 echo
-say "Nutriplan is running:  https://${DOMAIN}"
-echo "    (the TLS certificate is requested on the first visit: it can take up to a minute;"
-echo "     the DNS record of ${DOMAIN} must point to this server, ports 80 and 443 open)"
+say "Nutriplan is running"
+cat <<TXT
+
+  Addresses and ports
+  -------------------
+  Web application   https://${DOMAIN}            port 443 (HTTPS, certificate handled by Traefik)
+  HTTP              http://${DOMAIN}             port 80  (only redirects to HTTPS)
+TXT
+case "$DOMAIN" in
+  localhost|127.*|*.local) cat <<TXT
+  Local test        https://localhost on this machine (self-signed certificate: accept the browser warning)
+  From other PCs    https://<IP-of-this-server>, e.g. https://${LAN_IP:-192.168.0.10}  (same warning;
+                    the server firewall must allow ports 80 and 443)
+TXT
+  ;;
+  *) cat <<TXT
+  This machine      https://localhost also works (self-signed certificate)
+  Requirements      the DNS record of ${DOMAIN} must point to this server and ports 80/443 must be open;
+                    the Let's Encrypt certificate is requested on the first visit (up to a minute).
+TXT
+  ;;
+esac
+cat <<TXT
+
+  Containers
+  ----------
+  nutriplan-traefik                 HTTPS reverse proxy        host ports 80 and 443 (published)
+  nutriplan-backend-and-frontend    API + web interface        port 8000, internal only (not published)
+  nutriplan-db                      PostgreSQL                 port 5432, internal only (not published)
+
+  Data folder       ${DATA_DIR}   (database, documents, certificates: back it up)
+TXT
 echo
 if [ -n "$GENERATED_ADMIN_PW" ]; then
-  echo "    Administrator user : admin"
-  echo "    Password           : ${GENERATED_ADMIN_PW}     <-- write it down; also stored in .env"
+  echo "  Administrator user : admin"
+  echo "  Password           : ${GENERATED_ADMIN_PW}     <-- write it down; also stored in .env"
 else
-  echo "    Administrator user : admin   (initial password: ADMIN_PASSWORD in .env;"
-  echo "                                  it is only used on an empty database, the app may have changed it)"
+  echo "  Administrator user : admin   (initial password: ADMIN_PASSWORD in .env;"
+  echo "                                it is only used on an empty database, the app may have changed it)"
 fi
 echo
 echo "Useful commands (run in this folder):"
-echo "    docker compose --env-file .env -f docker-compose.yml logs -f backend"
+echo "    docker compose --env-file .env -f docker-compose.yml logs -f backend-and-frontend"
 echo "    docker compose --env-file .env -f docker-compose.yml down        # stop (data is kept in ${DATA_DIR})"

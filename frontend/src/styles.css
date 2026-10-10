@@ -96,7 +96,8 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .btn svg { width: 18px; height: 18px; }
 .f { display: flex; flex-direction: column; gap: .25rem; font-size: .88rem; color: var(--muted); }
 .f > span.req::after { content: " *"; color: var(--danger); }
-input[type=text], input[type=password], input[type=email], input[type=number], input[type=date], input[type=time], select, textarea {
+input[type=text], input[type=password], input[type=email], input[type=number], input[type=date], input[type=time],
+input[type=url], input[type=tel], input[type=search], select, textarea {
   width: 100%; padding: .5rem .65rem; border: 1px solid var(--border); border-radius: 9px; background: var(--surface); color: var(--text); min-height: 38px; }
 textarea { min-height: 80px; resize: vertical; }
 input:focus, select:focus, textarea:focus, .btn:focus-visible, button:focus-visible, a:focus-visible { outline: 2px solid var(--primary); outline-offset: 1px; }

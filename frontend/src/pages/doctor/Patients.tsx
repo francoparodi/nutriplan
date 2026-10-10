@@ -69,6 +69,7 @@ export function PatientsPage() {
           <button className="btn primary" onClick={() => void create()}><Icon name="plus" />{t("new_patient")}</button>
         </div>
       </div>
+      <p className="muted">{t("patients_click_hint")}</p>
       {incomplete > 0 && <div className="alert warn">{t("patients_incomplete", { n: incomplete })}</div>}
       <div className="table-wrap"><table>
         <thead><tr>{["patient", "diet", "last_weight", "adherence_7d", "off_plan_7d", "diary", "last_login"].map((k) => <th key={k}>{t("col_" + k)}</th>)}</tr></thead>

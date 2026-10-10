@@ -1,16 +1,18 @@
 import uuid
 from datetime import date, timedelta
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
 from fastapi.responses import Response
 from pydantic import BaseModel
 from sqlalchemy import select, delete
 from sqlalchemy.orm import Session
 
+from .. import config
 from ..db import get_db
 from ..deps import active_user, audit, doctor_user, parse_uuid
 from ..models import Diet, User
 from ..services.diet import DietIn, diet_to_dict, reid_document, save_diet
+from ..services.pdf_import import build as build_import, identify as identify_pdf
 from ..services.planpdf import plan_pdf
 
 router = APIRouter(prefix="/api/diets", tags=["diets"])
@@ -51,6 +53,32 @@ def create_diet(body: DietIn, request: Request, user: User = Depends(doctor_user
     db.flush()
     save_diet(db, user, d, body)
     audit(db, user, "diet_create", "diet", d.name, request)
+    return diet_to_dict(db, d)
+
+
+def import_pdf_for(db: Session, doctor: User, data: bytes, filename: str, request: Request) -> Diet:
+    """Creates a template diet (not assigned to any patient) from a known PDF."""
+    try:
+        key = identify_pdf(data, filename)
+    except ValueError:
+        raise HTTPException(400, "not_a_pdf")
+    if not key:
+        raise HTTPException(422, "pdf_not_recognized")
+    d = Diet(doctor_id=doctor.id, name="tmp")
+    db.add(d)
+    db.flush()
+    save_diet(db, doctor, d, build_import(key, filename))
+    return d
+
+
+@router.post("/import-pdf")
+def import_pdf(request: Request, file: UploadFile = File(...), user: User = Depends(doctor_user),
+               db: Session = Depends(get_db)):
+    data = file.file.read(config.MAX_UPLOAD_MB * 1024 * 1024 + 1)
+    if len(data) > config.MAX_UPLOAD_MB * 1024 * 1024:
+        raise HTTPException(413, "file_too_large")
+    d = import_pdf_for(db, user, data, file.filename or "", request)
+    audit(db, user, "diet_import_pdf", "diet", f"{file.filename} -> {d.name}", request)
     return diet_to_dict(db, d)
 
 

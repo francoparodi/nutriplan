@@ -1,6 +1,6 @@
 from datetime import date, datetime, timedelta, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
 from pydantic import BaseModel, Field
 from sqlalchemy import delete, func, select, text, cast, Date
 from sqlalchemy.orm import Session
@@ -189,3 +189,23 @@ def create_doctor(body: DoctorIn, request: Request, user: User = Depends(admin_u
     db.add(u)
     audit(db, user, "doctor_create", "user", uname, request)
     return {"id": str(u.id), "username": uname, "temporary_password": temp}
+
+
+@router.post("/import-diet-pdf")
+def import_diet_pdf(request: Request, file: UploadFile = File(...), doctor_id: str = Form(...),
+                    user: User = Depends(admin_user), db: Session = Depends(get_db)):
+    """Creates the diet(s) of a known PDF as a template in the chosen doctor's account."""
+    import uuid as _u
+    from .diets import import_pdf_for
+    try:
+        doc = db.get(User, _u.UUID(doctor_id))
+    except ValueError:
+        doc = None
+    if not doc or doc.role != "doctor":
+        raise HTTPException(400, "invalid_doctor")
+    data = file.file.read(config.MAX_UPLOAD_MB * 1024 * 1024 + 1)
+    if len(data) > config.MAX_UPLOAD_MB * 1024 * 1024:
+        raise HTTPException(413, "file_too_large")
+    d = import_pdf_for(db, doc, data, file.filename or "", request)
+    audit(db, user, "diet_import_pdf", "diet", f"{file.filename} -> {d.name} (medico {doc.username})", request)
+    return {"id": str(d.id), "name": d.name, "doctor": doc.username}

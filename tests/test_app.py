@@ -436,3 +436,40 @@ def test_patient_reports_health_and_doctor_sees_it(login):
     assert med.put(f"/api/patients/{pid}/health", json={}).status_code == 403   # doctors use the full record
     assert gi.put(f"/api/patients/{pid}/health", json={}).status_code == 404   # other patients cannot
     fr.put(f"/api/patients/{pid}/health", json={})
+
+
+def _fake_pdf(title, pages):
+    import io as _io
+    from reportlab.pdfgen import canvas
+    b = _io.BytesIO()
+    c = canvas.Canvas(b)
+    c.setTitle(title)
+    for i in range(pages):
+        c.drawString(72, 720, f"page {i}")
+        c.showPage()
+    c.save()
+    return b.getvalue()
+
+
+def test_import_diet_from_pdf(login, app_client):
+    med, fr, adm = login("medico"), login("franco"), login("admin")
+    franco = _fake_pdf("Parodi_Franco_piano_alimentare", 7)
+    r = med.post("/api/diets/import-pdf", files={"file": ("qualsiasi.pdf", franco, "application/pdf")})
+    assert r.status_code == 200, r.text
+    d = r.json()
+    assert d["patient_id"] is None and len(d["groups"]) == 9 and [m["name"] for m in d["meals"]][:3] == ["Colazione", "Metà mattina", "Pranzo"]
+    giorgia = _fake_pdf("scan_0001", 6)
+    r = med.post("/api/diets/import-pdf", files={"file": ("Giorgia.pdf", giorgia, "application/pdf")})  # riconosciuto dal nome file
+    assert r.status_code == 200 and len(r.json()["groups"]) == 6
+    # sconosciuto / non PDF / paziente
+    assert med.post("/api/diets/import-pdf", files={"file": ("x.pdf", _fake_pdf("altro", 3), "application/pdf")}).status_code == 422
+    assert med.post("/api/diets/import-pdf", files={"file": ("x.pdf", b"not a pdf", "application/pdf")}).status_code == 400
+    assert fr.post("/api/diets/import-pdf", files={"file": ("Franco.pdf", franco, "application/pdf")}).status_code == 403
+    # admin: sceglie il medico destinatario
+    doc_id = next(u["id"] for u in adm.get("/api/admin/users?role=doctor").json() if u["username"] == "medico")
+    r = adm.post("/api/admin/import-diet-pdf", data={"doctor_id": doc_id}, files={"file": ("Franco.pdf", franco, "application/pdf")})
+    assert r.status_code == 200 and r.json()["doctor"] == "medico"
+    assert adm.post("/api/admin/import-diet-pdf", data={"doctor_id": "nope"}, files={"file": ("Franco.pdf", franco, "application/pdf")}).status_code == 400
+    # le diete importate sono visibili al medico come modelli
+    names = [x["name"] for x in med.get("/api/diets").json() if x["patient_id"] is None]
+    assert names.count("Piano alimentare - Parodi Franco") >= 2

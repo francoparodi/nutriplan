@@ -15,7 +15,7 @@ Web food diary for doctors/nutritionists and patients. The doctor builds meal pl
 - **Admin**: CPU/memory/disk load, connected users, activity and application logs, usage, activate/deactivate/delete users, full backup.
 - Light/dark theme, Italian/English, responsive, collapsible sidebar, persistent login, one-time passwords for resets.
 
-Sample plans transcribed from `Franco.pdf` and `Giorgia.pdf` are created with the demo data.
+Sample plans transcribed from `Franco.pdf` and `Giorgia.pdf` are created with the demo data. They can also be loaded at any time by uploading the PDFs: doctors from **Diets → Import from PDF**, the administrator from **Import diets** (choosing the target doctor). The source PDFs are scans, so they are recognised by fingerprint (title/pages/hash) and the already transcribed plan is created; arbitrary PDFs are not parsed (that would need OCR).
 
 ## Quick start (development)
 ```bash
@@ -58,7 +58,7 @@ Production runs three containers behind HTTPS, started from **published Docker i
 | Container | Image | Role |
 |---|---|---|
 | `nutriplan-traefik` | `traefik` | HTTPS reverse proxy: Let's Encrypt certificates (issued/renewed automatically), HTTP→HTTPS redirect, HSTS. The only container exposed to the internet (80/443). |
-| `nutriplan-backend` | `<dockerhub-user>/nutriplan-backend` | FastAPI API **and** the compiled React web interface. |
+| `nutriplan-backend-and-frontend` | `<dockerhub-user>/nutriplan-backend` | FastAPI API **and** the compiled React web interface. |
 | `nutriplan-db` | `postgres:16-alpine` | PostgreSQL; reachable only from the internal Docker network. |
 
 ### A. Publish a release (on your development machine)
@@ -87,6 +87,8 @@ cd install
 ```
 `install.sh` asks for the domain and a Let's Encrypt e-mail, generates strong random database and administrator passwords, downloads the images, starts everything and waits until the backend is healthy. At the end it prints the URL and the **administrator password** (also stored in `.env`, mode 600). For unattended installs: `NP_DOMAIN=... NP_ACME_EMAIL=... ./install.sh`.
 
+**Local test on your own PC**: leave the domain empty (it becomes `localhost`) and open `https://localhost`; the certificate is self-signed, so accept the browser warning. The app also answers on `https://localhost` and on the server's raw IP address (e.g. `https://192.168.0.10` from another PC or phone on the LAN, self-signed certificate warning); with a real domain, use that name.
+
 On a fresh install only the `admin` user exists: log in and create or activate doctors from the **Users** page (doctors can also self-register; their account stays disabled until the admin activates it).
 
 ### C. Update
@@ -95,7 +97,7 @@ Unzip the new `install.zip` over the existing `install` folder (your `.env` and 
 ### D. Operations
 ```bash
 cd install
-docker compose --env-file .env -f docker-compose.yml logs -f backend     # logs
+docker compose --env-file .env -f docker-compose.yml logs -f backend-and-frontend     # logs
 docker compose --env-file .env -f docker-compose.yml down                # stop (data is kept)
 docker compose --env-file .env -f docker-compose.yml exec db pg_dump -U nutriplan nutriplan > backup.sql
 ```

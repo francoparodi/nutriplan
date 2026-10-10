@@ -31,6 +31,9 @@ Tab **Documenti**: carica file (max 15 MB) classificandoli come documento, foto 
 ## Diete
 **Diete** elenca tutti i piani. Puoi **modificare**, **duplicare**, **assegnare**, scaricare il **PDF** o **eliminare**.
 
+### Importare una dieta da PDF
+Dalla pagina **Diete**, **Importa da PDF** carica `Franco.pdf` o `Giorgia.pdf`: la dieta già pronta viene creata come **modello** (non assegnata a nessun paziente) e si apre nell'editor. Al momento sono riconosciuti solo questi due piani; altri PDF vengono rifiutati.
+
 ### Struttura di un piano
 - **Pasti**: colazione, pranzo, cena… ognuno con orario e note. Un pasto può essere «uguale a» un altro (es. cena come pranzo). I pasti di tipo *extra* (olio, dolce…) sono facoltativi.
 - **Alternative**: A, B, C… (con portata I/II e un eventuale massimo settimanale). Il paziente ne sceglie una. Un'alternativa «sempre inclusa» vale per tutte (es. contorno).

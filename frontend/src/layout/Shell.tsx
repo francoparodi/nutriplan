@@ -41,15 +41,16 @@ export function Shell() {
       { to: "/plan", icon: "plan", label: "nav_plan" },
       { to: "/help", icon: "help", label: "nav_help" },
     ] : user.role === "doctor" ? [
-      { to: "/patients", icon: "users", label: "nav_patients" },
       { to: "/diets", icon: "plan", label: "nav_diets" },
-      { to: "/backup", icon: "db", label: "nav_backup" },
+      { to: "/patients", icon: "users", label: "nav_patients" },
       { to: "/profile", icon: "user", label: "nav_profile" },
+      { to: "/backup", icon: "db", label: "nav_backup" },
       { to: "/help", icon: "help", label: "nav_help" },
     ] : [
       { to: "/admin", icon: "activity", label: "nav_overview", end: true },
       { to: "/admin/users", icon: "users", label: "nav_users" },
       { to: "/admin/logs", icon: "report", label: "nav_logs" },
+      { to: "/admin/import", icon: "upload", label: "nav_import" },
       { to: "/admin/backup", icon: "db", label: "nav_backup" },
       { to: "/profile", icon: "user", label: "nav_profile" },
       { to: "/help", icon: "help", label: "nav_help" },

@@ -15,7 +15,7 @@ Diario alimentare web per medici/nutrizionisti e pazienti. Il medico crea piani 
 - **Admin**: carico CPU/memoria/disco, utenti collegati, log di attività e di applicazione, utilizzo, attivazione/disattivazione/eliminazione utenti, backup completo.
 - Tema chiaro/scuro, italiano/inglese, responsive, sidebar collassabile, login persistente, password monouso per i reset.
 
-I piani dimostrativi trascritti da `Franco.pdf` e `Giorgia.pdf` sono creati insieme ai dati demo.
+I piani dimostrativi trascritti da `Franco.pdf` e `Giorgia.pdf` sono creati insieme ai dati demo. Si possono anche caricare in qualsiasi momento con l'upload dei PDF: il medico da **Diete → Importa da PDF**, l'amministratore da **Importa diete** (scegliendo il medico destinatario). I PDF sono scansioni, quindi vengono riconosciuti dall'impronta (titolo/pagine/hash) e viene creato il piano già trascritto; PDF qualsiasi non vengono interpretati (servirebbe l'OCR).
 
 ## Avvio rapido (sviluppo)
 ```bash
@@ -58,7 +58,7 @@ La produzione usa tre container dietro HTTPS, avviati da **immagini Docker pubbl
 | Container | Immagine | Ruolo |
 |---|---|---|
 | `nutriplan-traefik` | `traefik` | Reverse proxy HTTPS: certificati Let's Encrypt (emessi e rinnovati automaticamente), redirect HTTP→HTTPS, HSTS. È l'unico container esposto a internet (80/443). |
-| `nutriplan-backend` | `<utente-dockerhub>/nutriplan-backend` | API FastAPI **e** interfaccia web React compilata. |
+| `nutriplan-backend-and-frontend` | `<utente-dockerhub>/nutriplan-backend` | API FastAPI **e** interfaccia web React compilata. |
 | `nutriplan-db` | `postgres:16-alpine` | PostgreSQL; raggiungibile solo dalla rete Docker interna. |
 
 ### A. Pubblicare una release (sul PC di sviluppo)
@@ -87,6 +87,8 @@ cd install
 ```
 `install.sh` chiede il dominio e un'e-mail per Let's Encrypt, genera password casuali robuste per database e amministratore, scarica le immagini, avvia tutto e attende che il backend sia pronto. Alla fine stampa l'URL e la **password dell'amministratore** (salvata anche in `.env`, permessi 600). Per installazioni non interattive: `NP_DOMAIN=... NP_ACME_EMAIL=... ./install.sh`.
 
+**Prova in locale sul proprio PC**: lascia vuoto il dominio (diventa `localhost`) e apri `https://localhost`; il certificato è autofirmato, quindi accetta l'avviso del browser. L'app risponde anche su `https://localhost` e sull'indirizzo IP del server (es. `https://192.168.0.10` da un altro PC o telefono della LAN, con l'avviso del certificato autofirmato); con un dominio vero usa quel nome.
+
 Su una nuova installazione esiste solo l'utente `admin`: accedi e crea o attiva i medici dalla pagina **Utenti** (i medici possono anche registrarsi da soli; l'account resta disattivato finché l'admin non lo attiva).
 
 ### C. Aggiornare
@@ -95,7 +97,7 @@ Decomprimi il nuovo `install.zip` sopra la cartella `install` esistente (`.env` 
 ### D. Gestione
 ```bash
 cd install
-docker compose --env-file .env -f docker-compose.yml logs -f backend     # log
+docker compose --env-file .env -f docker-compose.yml logs -f backend-and-frontend     # log
 docker compose --env-file .env -f docker-compose.yml down                # ferma (i dati restano)
 docker compose --env-file .env -f docker-compose.yml exec db pg_dump -U nutriplan nutriplan > backup.sql
 ```
