@@ -1,0 +1,75 @@
+# Nutriplan - LOCAL DEVELOPMENT stack
+#
+#   cp .env.example .env        (optional: every variable has a default)
+#   docker compose up -d --build
+#
+# Containers: nutriplan-db, nutriplan-backend, nutriplan-frontend
+#
+# Frontend:   http://localhost:5173   (React + Vite dev server with hot reload, proxies /api)
+# API:        http://localhost:8000   (FastAPI, code is bind-mounted, uvicorn reloads on change)
+# PostgreSQL: localhost:55432         (user/password/db: nutriplan)
+#
+# Open the frontend on port 5173. Both ports are reachable from other machines on your LAN.
+# Tests:      DATABASE name "nutriplan_test" is created automatically on first start.
+#
+# For the production stack see docker-compose-prod.yml.
+
+services:
+  db:
+    container_name: nutriplan-db
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: nutriplan
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-nutriplan}
+      POSTGRES_DB: nutriplan
+    ports:
+      # bound to localhost only
+      - "127.0.0.1:${DB_PORT:-55432}:5432"
+    volumes:
+      # Database files live in a plain folder on this machine (default ./data/postgres),
+      # so they survive "docker compose down" and even "down -v".
+      - ${DATA_DIR:-./data}/postgres:/var/lib/postgresql/data
+      - ./docker/db-init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U nutriplan"]
+      interval: 5s
+      retries: 10
+
+  backend:
+    container_name: nutriplan-backend
+    build: .
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      DATABASE_URL: postgresql+psycopg://nutriplan:${POSTGRES_PASSWORD:-nutriplan}@db:5432/nutriplan
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+    volumes:
+      - ./app:/srv/app
+      - ./docs:/srv/docs:ro
+    ports:
+      - "8000:8000"
+
+  frontend:
+    container_name: nutriplan-frontend
+    image: node:24-alpine
+    working_dir: /frontend
+    # node_modules lives in a named volume so it is not mixed with the host files
+    command: sh -c "npm install --no-audit --no-fund && npm run dev"
+    environment:
+      API_TARGET: http://backend:8000
+    volumes:
+      - ./frontend:/frontend
+      - node_modules:/frontend/node_modules
+    depends_on:
+      - backend
+    ports:
+      - "5173:5173"
+
+volumes:
+  node_modules:

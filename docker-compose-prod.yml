@@ -1,0 +1,113 @@
+# Nutriplan - PRODUCTION stack (public server, HTTPS)
+#
+#   Normal installation: use install.zip (see README) - it runs this file with
+#   the published Docker image, no source code needed on the server.
+#
+#   Manual run from a source checkout:
+#     cp .env.example .env            # then set the [PROD] and [COMMON] variables
+#     docker compose -f docker-compose-prod.yml up -d --build
+#
+# Containers: nutriplan-traefik, nutriplan-backend, nutriplan-db
+#
+# Traefik terminates TLS (Let's Encrypt certificates are issued and renewed
+# automatically) and is the ONLY container exposed to the internet (ports 80/443).
+# The backend and the database are reachable only through internal Docker networks.
+#
+# Data: everything persistent is stored under PROD_DATA_DIR on the host (default ./data).
+#       Back up that folder (or use pg_dump, see README).
+#
+# Requirements: the DNS record of DOMAIN must point to this server and ports
+# 80 and 443 must be open (port 80 is needed for the ACME HTTP-01 challenge).
+
+name: nutriplan-prod
+
+services:
+  traefik:
+    container_name: nutriplan-traefik
+    image: traefik:v3.6
+    restart: unless-stopped
+    command:
+      - --providers.docker=true
+      - --providers.docker.exposedbydefault=false
+      - --providers.docker.network=web
+      - --entrypoints.web.address=:80
+      - --entrypoints.websecure.address=:443
+      # plain HTTP is always redirected to HTTPS
+      - --entrypoints.web.http.redirections.entrypoint.to=websecure
+      - --entrypoints.web.http.redirections.entrypoint.scheme=https
+      - --certificatesresolvers.le.acme.email=${ACME_EMAIL}
+      - --certificatesresolvers.le.acme.storage=/letsencrypt/acme.json
+      - --certificatesresolvers.le.acme.httpchallenge.entrypoint=web
+      - --global.sendanonymoususage=false
+      - --log.level=INFO
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      # read-only; used by Traefik only to discover the labelled containers
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      # TLS certificates are kept on the host too, so they are not re-issued after a rebuild
+      - ${PROD_DATA_DIR:-./data}/letsencrypt:/letsencrypt
+    networks: [web]
+    security_opt:
+      - no-new-privileges:true
+
+  db:
+    container_name: nutriplan-db
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: nutriplan
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: nutriplan
+    volumes:
+      # All application data (patients, diets, diaries, uploaded documents) is stored in
+      # this host folder: it survives "docker compose down" and image rebuilds.
+      - ${PROD_DATA_DIR:-./data}/postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U nutriplan"]
+      interval: 10s
+      retries: 10
+    networks: [internal]
+    security_opt:
+      - no-new-privileges:true
+
+  backend:
+    container_name: nutriplan-backend
+    # published image (install.zip); "build" is used only when running from a source checkout
+    image: ${NUTRIPLAN_IMAGE:-nutriplan-backend:local}
+    build: .
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql+psycopg://nutriplan:${POSTGRES_PASSWORD}@db:5432/nutriplan
+      # session cookie is sent over HTTPS only
+      COOKIE_SECURE: "true"
+      APP_TZ: ${APP_TZ:-Europe/Rome}
+      SEED_DEMO: ${PROD_SEED_DEMO:-false}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?set ADMIN_PASSWORD in .env}
+      SESSION_DAYS: ${SESSION_DAYS:-180}
+      MAX_UPLOAD_MB: ${MAX_UPLOAD_MB:-15}
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=web
+      - traefik.http.routers.nutriplan.rule=Host(`${DOMAIN:?set DOMAIN in .env}`)
+      - traefik.http.routers.nutriplan.entrypoints=websecure
+      - traefik.http.routers.nutriplan.tls.certresolver=le
+      - traefik.http.routers.nutriplan.middlewares=nutriplan-headers
+      - traefik.http.services.nutriplan.loadbalancer.server.port=8000
+      # HSTS: browsers will use HTTPS only for this domain
+      - traefik.http.middlewares.nutriplan-headers.headers.stsSeconds=31536000
+      - traefik.http.middlewares.nutriplan-headers.headers.stsIncludeSubdomains=true
+    networks: [web, internal]
+    security_opt:
+      - no-new-privileges:true
+
+networks:
+  web:
+    name: web
+  internal:
+    internal: true   # no outbound/inbound internet access, app <-> db only
+

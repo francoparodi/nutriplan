@@ -1,0 +1,14 @@
+.venv/
+__pycache__/
+*.pyc
+.env
+.pytest_cache/
+node_modules/
+frontend/dist/
+app/static/
+data/
+dist/
+
+# Personal source documents (health data of real people): kept locally, not published
+Franco.pdf
+Giorgia.pdf
