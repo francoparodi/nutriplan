@@ -201,7 +201,7 @@ def plan_pdf(doc: dict, patient_name: str, doctor_name: str, lang: str = "it") -
             el.append(Spacer(1, 6 * mm))
             el.append(Paragraph(t["conv"], S["p"]))
             el.append(Spacer(1, 3 * mm))
-            rows = [[t["type"], t["raw"], t["cooked"]]] + [[c["name"].upper(), c["raw"], ""] for c in conv]
+            rows = [[t["type"], t["raw"], t["cooked"]]] + [[c["name"].upper(), c.get("raw", ""), c.get("cooked", "")] for c in conv]
             tb = Table(rows, colWidths=[W * 0.35, W * 0.3, W * 0.3])
             tb.setStyle(TableStyle([("GRID", (0, 0), (-1, -1), 0.7, colors.black), ("FONT", (0, 0), (-1, -1), BASE, 11),
                                     ("ALIGN", (1, 0), (1, -1), "CENTER"), ("ALIGN", (2, 0), (2, 0), "CENTER"),

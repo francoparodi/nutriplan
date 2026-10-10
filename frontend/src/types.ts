@@ -16,7 +16,7 @@ export interface DItem { id: string; name: string; qty: number | null; unit: str
 export interface DOption { id: string; label: string; course: string; kind: "choice" | "addon"; max_per_week: number | null; note: string; items: DItem[] }
 export interface DMeal { id: string; name: string; time: string; kind: "meal" | "extras"; required: boolean; same_as_meal_id: string | null; note: string; options: DOption[] }
 export interface Diet {
-  id: string; name: string; description: string; notes: string; conversion: { name: string; raw: string }[];
+  id: string; name: string; description: string; notes: string; conversion: { name: string; raw: string; cooked: string }[];
   patient_id: string | null; start_date: string | null; end_date: string | null; status: "active" | "paused" | "archived";
   groups: Group[]; meals: DMeal[];
 }
@@ -90,7 +90,7 @@ export interface AdminOverview {
 }
 export interface MetricRow { ts: string; cpu: number; mem: number; load1: number; disk: number; online: number; requests: number; errors: number }
 export interface AdminUser {
-  id: string; username: string; full_name: string; email: string; role: Role; active: boolean; doctor: string;
+  id: string; username: string; full_name: string; email: string; role: Role; active: boolean; doctor: string; doctor_id: string | null;
   patients: number; must_change_password: boolean; created_at: string | null; last_login_at: string | null;
 }
 export interface AuditRow { id: number; ts: string; username: string; role: string; action: string; entity: string; detail: string; ip: string }

@@ -64,7 +64,8 @@ class MealIn(BaseModel):
 
 class ConvIn(BaseModel):
     name: str = Field(max_length=120)
-    raw: str = Field(default="", max_length=60)
+    raw: str = Field(default="", max_length=60)      # weight/quantity when raw (e.g. "120 g")
+    cooked: str = Field(default="", max_length=60)   # equivalent weight when cooked (e.g. "300 g")
 
 
 class DietIn(BaseModel):

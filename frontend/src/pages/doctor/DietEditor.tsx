@@ -210,16 +210,26 @@ export function DietEditorPage() {
       <div className="card">
         <h3>{t("conversion")}</h3>
         <p className="small muted">{t("conversion_help")}</p>
+        {doc.conversion.length > 0 && (
+          <div className="row small muted" style={{ marginBottom: ".2rem" }}>
+            <span style={{ flex: "2 1 160px" }}>{t("type")}</span>
+            <span style={{ flex: "1 1 100px" }}>{t("raw")}</span>
+            <span style={{ flex: "1 1 100px" }}>{t("cooked")}</span>
+            <span style={{ width: 38 }} />
+          </div>
+        )}
         {doc.conversion.map((c, i) => (
-          <div className="row" key={i} style={{ marginBottom: ".4rem" }}>
-            <input type="text" placeholder={t("f_name")} style={{ flex: "2 1 160px" }} value={c.name}
+          <div className="row" key={i} style={{ marginBottom: ".4rem", flexWrap: "nowrap" }}>
+            <input type="text" placeholder={t("f_name")} aria-label={t("type")} style={{ flex: "2 1 160px" }} value={c.name}
               onChange={(e) => edit((d) => { d.conversion[i].name = e.target.value; })} />
-            <input type="text" placeholder="120 g" style={{ flex: "1 1 100px" }} value={c.raw}
+            <input type="text" placeholder="120 g" aria-label={t("raw")} style={{ flex: "1 1 100px" }} value={c.raw}
               onChange={(e) => edit((d) => { d.conversion[i].raw = e.target.value; })} />
+            <input type="text" placeholder="300 g" aria-label={t("cooked")} style={{ flex: "1 1 100px" }} value={c.cooked ?? ""}
+              onChange={(e) => edit((d) => { d.conversion[i].cooked = e.target.value; })} />
             <button className="iconbtn" type="button" onClick={() => edit((d) => { d.conversion.splice(i, 1); })}><Icon name="trash" /></button>
           </div>
         ))}
-        <button className="btn sm" type="button" onClick={() => edit((d) => { d.conversion.push({ name: "", raw: "" }); })}><Icon name="plus" />{t("add_row")}</button>
+        <button className="btn sm" type="button" onClick={() => edit((d) => { d.conversion.push({ name: "", raw: "", cooked: "" }); })}><Icon name="plus" />{t("add_row")}</button>
       </div>
     </div>
   );

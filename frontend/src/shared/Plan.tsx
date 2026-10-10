@@ -58,7 +58,7 @@ export function PlanView({ doc }: { doc: Diet }) {
         <div className="card"><h2>{t("conversion")}</h2>
           <div className="table-wrap"><table>
             <thead><tr><th>{t("type")}</th><th>{t("raw")}</th><th>{t("cooked")}</th></tr></thead>
-            <tbody>{doc.conversion.map((c, i) => <tr key={i}><td>{c.name}</td><td>{c.raw}</td><td /></tr>)}</tbody>
+            <tbody>{doc.conversion.map((c, i) => <tr key={i}><td>{c.name}</td><td>{c.raw}</td><td>{c.cooked}</td></tr>)}</tbody>
           </table></div>
         </div>
       )}

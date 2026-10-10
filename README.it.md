@@ -12,7 +12,7 @@ Diario alimentare web per medici/nutrizionisti e pazienti. Il medico crea piani 
 - **Scheda paziente** completa con campi personalizzati, contatti, foto profilo, visite (misure, note, allegati), documenti, foto e ricette.
 - **PDF del piano** (impaginazione analoga ai piani cartacei) e **resoconti PDF/Excel** per intervallo di date.
 - **Backup ZIP** per singolo medico (il ripristino non tocca i dati degli altri medici) e backup completo per l'amministratore.
-- **Admin**: carico CPU/memoria/disco, utenti collegati, log di attività e di applicazione, utilizzo, attivazione/disattivazione/eliminazione utenti, backup completo.
+- **Admin**: carico CPU/memoria/disco, utenti collegati, log di attività e di applicazione, utilizzo, attivazione/disattivazione/eliminazione utenti, **spostamento dei pazienti (tutti o alcuni) da un medico a un altro**, importazione diete da PDF, backup completo.
 - Tema chiaro/scuro, italiano/inglese, responsive, sidebar collassabile, login persistente, password monouso per i reset.
 
 I piani dimostrativi trascritti da `Franco.pdf` e `Giorgia.pdf` sono creati insieme ai dati demo. Si possono anche caricare in qualsiasi momento con l'upload dei PDF: il medico da **Diete → Importa da PDF**, l'amministratore da **Importa diete** (scegliendo il medico destinatario). I PDF sono scansioni, quindi vengono riconosciuti dall'impronta (titolo/pagine/hash) e viene creato il piano già trascritto; PDF qualsiasi non vengono interpretati (servirebbe l'OCR).

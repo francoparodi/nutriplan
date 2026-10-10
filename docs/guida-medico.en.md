@@ -39,7 +39,7 @@ In the **Diets** page, **Import from PDF** uploads `Franco.pdf` or `Giorgia.pdf`
 - **Alternatives**: A, B, C… (with course I/II and an optional weekly maximum). The patient picks one. An “always included” alternative applies to all (e.g. side dish).
 - **Foods**: name, quantity, unit, free text and optionally the **substitution group** (the \* of the paper plan).
 - **Substitution groups**: e.g. *Meat 200 g* with its equivalents (ricotta 120 g, fish 220 g…). Quantities shown to the patient are scaled to the planned quantity.
-- **Guidelines and conversions**: general guidelines and raw/cooked table, printed in the PDF.
+- **Guidelines and conversions**: general guidelines and the **raw/cooked** conversion table (for each food the raw weight and the equivalent cooked weight, both editable), shown to the patient and printed in the PDF.
 - **Preview**: shows the plan as the patient will see it.
 
 Press **Save** to apply changes. To keep diary history when the plan changes over time, create a new diet with **Assign** and a start date: the previous one is ended the day before.

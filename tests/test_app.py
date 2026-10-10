@@ -484,3 +484,65 @@ def test_sample_pdf_download_and_roundtrip(login):
     # the example is exactly what the importer recognises
     up = med.post("/api/diets/import-pdf", files={"file": ("Franco.pdf", r.content, "application/pdf")})
     assert up.status_code == 200 and up.json()["name"] == "Piano alimentare - Parodi Franco"
+
+
+def test_admin_moves_patients_between_doctors(login, app_client):
+    adm, med = login("admin"), login("medico")
+    adm.post("/api/admin/doctors", json={"username": "dottmove", "full_name": "Dott Move", "password": "password-lunga"})
+    c2 = make_client(app_client.app)
+    c2.post("/api/auth/login", json={"username": "dottmove", "password": "password-lunga"})
+    c2.post("/api/auth/change-password", json={"current_password": "password-lunga", "new_password": "altra-password-1"})
+    users = adm.get("/api/admin/users").json()
+    d1 = next(u for u in users if u["username"] == "medico")
+    d2 = next(u for u in users if u["username"] == "dottmove")
+    pat = adm.get(f"/api/admin/doctors/{d1['id']}/patients").json()
+    assert {p["username"] for p in pat} >= {"franco", "giorgia"}
+    fr_id = next(p["id"] for p in pat if p["username"] == "franco")
+    # franco has a diary entry, a weight and an assigned diet before the move
+    fr = login("franco")
+    fr.put(f"/api/patients/{fr_id}/weights/{date.today()}", json={"kg": 80})
+    # invalid requests
+    assert adm.post("/api/admin/move-patients", json={"from_doctor_id": d1["id"], "to_doctor_id": d1["id"]}).status_code == 400
+    assert adm.post("/api/admin/move-patients", json={"from_doctor_id": d2["id"], "to_doctor_id": d1["id"], "patient_ids": [fr_id]}).status_code == 400
+    # move only franco
+    r = adm.post("/api/admin/move-patients", json={"from_doctor_id": d1["id"], "to_doctor_id": d2["id"], "patient_ids": [fr_id]})
+    assert r.status_code == 200 and r.json()["moved"] == 1 and r.json()["diets"] >= 1
+    assert "franco" not in {p["username"] for p in med.get("/api/patients").json()}
+    assert "giorgia" in {p["username"] for p in med.get("/api/patients").json()}
+    assert {p["username"] for p in c2.get("/api/patients").json()} == {"franco"}
+    assert med.get(f"/api/patients/{fr_id}").status_code == 404           # the old doctor lost access
+    assert c2.get(f"/api/patients/{fr_id}").status_code == 200
+    assert c2.get(f"/api/patients/{fr_id}/weights").json()[-1]["kg"] == 80
+    diets = c2.get("/api/diets").json()
+    assert any(d["patient_id"] == fr_id for d in diets)
+    did = next(d["id"] for d in diets if d["patient_id"] == fr_id)
+    assert c2.get(f"/api/diets/{did}").status_code == 200                  # nested rows moved too
+    assert med.get(f"/api/diets/{did}").status_code == 404
+    # the patient keeps working and sees the same data
+    assert login("franco").get(f"/api/patients/{fr_id}/diets").json()
+    # a doctor backup of the new doctor contains the patient; the old one does not
+    import io, zipfile
+    z2 = zipfile.ZipFile(io.BytesIO(c2.get("/api/doctor/backup").content)).read("data/users.json").decode()
+    z1 = zipfile.ZipFile(io.BytesIO(med.get("/api/doctor/backup").content)).read("data/users.json").decode()
+    assert "franco" in z2 and "franco" not in z1
+    # move everyone else back: "all"
+    r = adm.post("/api/admin/move-patients", json={"from_doctor_id": d2["id"], "to_doctor_id": d1["id"]})
+    assert r.json()["moved"] == 1
+    assert {"franco", "giorgia"} <= {p["username"] for p in med.get("/api/patients").json()}
+
+
+def test_conversion_raw_cooked_editable(login):
+    med = login("medico")
+    d = med.post("/api/diets", json={"name": "Conv", "conversion": [{"name": "Pasta", "raw": "120 g", "cooked": "300 g"},
+                                                                  {"name": "Riso", "raw": "100 g"}]}).json()
+    assert d["conversion"][0] == {"name": "Pasta", "raw": "120 g", "cooked": "300 g"}
+    assert d["conversion"][1]["cooked"] == ""          # optional
+    d["conversion"][1]["cooked"] = "250 g"
+    d["conversion"].append({"name": "Gnocchi", "raw": "300 g", "cooked": "350 g"})
+    r = med.put(f"/api/diets/{d['id']}", json=d).json()
+    assert [c["cooked"] for c in r["conversion"]] == ["300 g", "250 g", "350 g"]
+    cp = med.post(f"/api/diets/{d['id']}/copy", json={}).json()
+    assert [c["cooked"] for c in cp["conversion"]] == ["300 g", "250 g", "350 g"]
+    pdf = med.get(f"/api/diets/{d['id']}/pdf")
+    assert pdf.status_code == 200 and pdf.content[:4] == b"%PDF"
+    med.delete(f"/api/diets/{d['id']}"); med.delete(f"/api/diets/{cp['id']}")

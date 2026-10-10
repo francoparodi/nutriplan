@@ -2,13 +2,14 @@ from datetime import date, datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
 from pydantic import BaseModel, Field
-from sqlalchemy import delete, func, select, text, cast, Date
+from sqlalchemy import delete, func, select, text, cast, Date, update
 from sqlalchemy.orm import Session
 
 from .. import __version__, config
 from ..db import get_db
 from ..deps import admin_user, audit
-from ..models import AppLog, AuditLog, Metric, User, UserSession
+from ..models import (AppLog, AuditLog, Diet, DietGroup, DietGroupMember, DietItem, DietMeal, DietOption, MealLog,
+                      Metric, PatientDocument, PatientProfile, User, UserSession, Visit, Weight)
 from ..security import hash_password, one_shot_password
 from ..services import metrics
 from .auth import USERNAME_RE, check_new_password
@@ -114,7 +115,8 @@ def users(role: str = "", q: str = "", user: User = Depends(admin_user), db: Ses
     counts = dict(db.execute(select(User.doctor_id, func.count()).where(User.role == "patient")
                              .group_by(User.doctor_id)).all())
     return [{"id": str(u.id), "username": u.username, "full_name": u.full_name, "email": u.email, "role": u.role,
-             "active": u.active, "doctor": names.get(u.doctor_id, ""), "patients": counts.get(u.id, 0),
+             "active": u.active, "doctor": names.get(u.doctor_id, ""), "doctor_id": str(u.doctor_id) if u.doctor_id else None,
+             "patients": counts.get(u.id, 0),
              "must_change_password": u.must_change_password,
              "created_at": u.created_at.isoformat() if u.created_at else None,
              "last_login_at": u.last_login_at.isoformat() if u.last_login_at else None}
@@ -209,3 +211,74 @@ def import_diet_pdf(request: Request, file: UploadFile = File(...), doctor_id: s
     d = import_pdf_for(db, doc, data, file.filename or "", request)
     audit(db, user, "diet_import_pdf", "diet", f"{file.filename} -> {d.name} (medico {doc.username})", request)
     return {"id": str(d.id), "name": d.name, "doctor": doc.username}
+
+
+# ------------------------------------------------------------------ move patients between doctors
+def _doctor(db: Session, raw: str) -> User:
+    import uuid as _u
+    try:
+        d = db.get(User, _u.UUID(raw))
+    except (ValueError, TypeError):
+        d = None
+    if not d or d.role != "doctor":
+        raise HTTPException(400, "invalid_doctor")
+    return d
+
+
+@router.get("/doctors/{did}/patients")
+def doctor_patients(did: str, user: User = Depends(admin_user), db: Session = Depends(get_db)):
+    """Names of a doctor's patients (no clinical data): used by the "move patients" dialog."""
+    doc = _doctor(db, did)
+    return [{"id": str(p.id), "username": p.username, "full_name": p.full_name, "active": p.active}
+            for p in db.scalars(select(User).where(User.role == "patient", User.doctor_id == doc.id)
+                                .order_by(User.full_name))]
+
+
+class MoveIn(BaseModel):
+    to_doctor_id: str
+    from_doctor_id: str
+    patient_ids: list[str] | None = None  # None = all the patients of the source doctor
+
+
+@router.post("/move-patients")
+def move_patients(body: MoveIn, request: Request, user: User = Depends(admin_user), db: Session = Depends(get_db)):
+    """Moves patients (all or some) from one doctor to another, with everything that belongs to them:
+    record, diary, weights, visits, documents and the diets assigned to them. Doctors' unassigned
+    templates stay with their owner."""
+    import uuid as _u
+    src, dst = _doctor(db, body.from_doctor_id), _doctor(db, body.to_doctor_id)
+    if src.id == dst.id:
+        raise HTTPException(400, "same_doctor")
+    if not dst.active:
+        raise HTTPException(400, "doctor_inactive")
+    q = select(User).where(User.role == "patient", User.doctor_id == src.id)
+    if body.patient_ids is not None:
+        try:
+            ids = [_u.UUID(i) for i in body.patient_ids]
+        except ValueError:
+            raise HTTPException(400, "invalid_patient")
+        q = q.where(User.id.in_(ids))
+    patients = list(db.scalars(q))
+    if body.patient_ids is not None and len(patients) != len(set(body.patient_ids)):
+        raise HTTPException(400, "invalid_patient")
+    if not patients:
+        raise HTTPException(400, "no_patients")
+    pids = [p.id for p in patients]
+    db.execute(update(User).where(User.id.in_(pids)).values(doctor_id=dst.id))
+    for model in (PatientProfile, PatientDocument, Weight, Visit, MealLog):
+        db.execute(update(model).where(model.patient_id.in_(pids)).values(doctor_id=dst.id))
+    diet_ids = list(db.scalars(select(Diet.id).where(Diet.patient_id.in_(pids))))
+    n_diets = len(diet_ids)
+    if diet_ids:
+        db.execute(update(Diet).where(Diet.id.in_(diet_ids)).values(doctor_id=dst.id))
+        group_ids = list(db.scalars(select(DietGroup.id).where(DietGroup.diet_id.in_(diet_ids))))
+        meal_ids = list(db.scalars(select(DietMeal.id).where(DietMeal.diet_id.in_(diet_ids))))
+        opt_ids = list(db.scalars(select(DietOption.id).where(DietOption.meal_id.in_(meal_ids)))) if meal_ids else []
+        db.execute(update(DietGroup).where(DietGroup.id.in_(group_ids)).values(doctor_id=dst.id)) if group_ids else None
+        db.execute(update(DietGroupMember).where(DietGroupMember.group_id.in_(group_ids)).values(doctor_id=dst.id)) if group_ids else None
+        db.execute(update(DietMeal).where(DietMeal.id.in_(meal_ids)).values(doctor_id=dst.id)) if meal_ids else None
+        db.execute(update(DietOption).where(DietOption.id.in_(opt_ids)).values(doctor_id=dst.id)) if opt_ids else None
+        db.execute(update(DietItem).where(DietItem.option_id.in_(opt_ids)).values(doctor_id=dst.id)) if opt_ids else None
+    audit(db, user, "patients_move", "user",
+          f"{', '.join(p.username for p in patients)}: {src.username} -> {dst.username} ({n_diets} diete)", request)
+    return {"moved": len(patients), "diets": n_diets, "from": src.username, "to": dst.username}

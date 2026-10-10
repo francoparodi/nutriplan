@@ -12,7 +12,7 @@ Web food diary for doctors/nutritionists and patients. The doctor builds meal pl
 - **Full patient record** with custom fields, contacts, profile photo, visits (measurements, notes, attachments), documents, photos and recipes.
 - **Meal plan PDF** (layout similar to paper plans) and **PDF/Excel reports** for any date range.
 - **ZIP backup** per doctor (restore never touches other doctors' data) and full backup for the administrator.
-- **Admin**: CPU/memory/disk load, connected users, activity and application logs, usage, activate/deactivate/delete users, full backup.
+- **Admin**: CPU/memory/disk load, connected users, activity and application logs, usage, activate/deactivate/delete users, **move patients (all or some) from one doctor to another**, import diets from PDF, full backup.
 - Light/dark theme, Italian/English, responsive, collapsible sidebar, persistent login, one-time passwords for resets.
 
 Sample plans transcribed from `Franco.pdf` and `Giorgia.pdf` are created with the demo data. They can also be loaded at any time by uploading the PDFs: doctors from **Diets → Import from PDF**, the administrator from **Import diets** (choosing the target doctor). The source PDFs are scans, so they are recognised by fingerprint (title/pages/hash) and the already transcribed plan is created; arbitrary PDFs are not parsed (that would need OCR).

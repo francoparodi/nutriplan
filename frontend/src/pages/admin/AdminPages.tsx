@@ -109,6 +109,68 @@ export function DashboardPage() {
   );
 }
 
+/** Moves some or all patients of a doctor to another doctor (admin). */
+function MovePatientsForm({ source, doctors, preselect, close }: {
+  source: AdminUser; doctors: AdminUser[]; preselect?: string[]; close: (v?: { moved: number; to: string }) => void;
+}) {
+  const { t } = useI18n();
+  const { run, toast } = useDialogs();
+  const targets = doctors.filter((d) => d.id !== source.id && d.active);
+  const list = useAsync(() => api.get<{ id: string; username: string; full_name: string; active: boolean }[]>(
+    `/api/admin/doctors/${source.id}/patients`), [source.id]);
+  const [target, setTarget] = useState(targets[0]?.id ?? "");
+  const [sel, setSel] = useState<Set<string> | null>(preselect ? new Set(preselect) : null);
+  if (!list.data) return <Spinner />;
+  const all = list.data;
+  const chosen = sel ?? new Set(all.map((p) => p.id));       // null = everyone
+  const toggle = (id: string) => { const n = new Set(chosen); if (n.has(id)) n.delete(id); else n.add(id); setSel(n); };
+  const allSelected = chosen.size === all.length;
+  const dest = targets.find((d) => d.id === target);
+  const submit = async () => {
+    if (!target) return toast(t("move_need_target"), true);
+    if (chosen.size === 0) return toast(t("move_need_patients"), true);
+    const r = await run(() => api.post<{ moved: number; to: string }>("/api/admin/move-patients", {
+      from_doctor_id: source.id, to_doctor_id: target, patient_ids: allSelected ? null : Array.from(chosen) }));
+    if (r) close(r);
+  };
+  return (
+    <>
+      <p className="muted">{t("move_from")}: <b>{source.full_name || source.username}</b></p>
+      {targets.length === 0 ? <div className="alert warn">{t("move_need_target")}</div> : (
+        <div className="col">
+          <Field label={t("move_to")}>
+            <select value={target} onChange={(e) => setTarget(e.target.value)}>
+              {targets.map((d) => <option key={d.id} value={d.id}>{d.full_name || d.username} (@{d.username})</option>)}
+            </select>
+          </Field>
+          <div>
+            <label className="row" style={{ fontWeight: 600 }}>
+              <input type="checkbox" checked={allSelected} onChange={(e) => setSel(e.target.checked ? null : new Set())} />
+              {t("move_all", { n: all.length })}
+            </label>
+            <div className="table-wrap" style={{ maxHeight: 260, overflow: "auto", marginTop: ".4rem" }}>
+              <table><tbody>
+                {all.map((p) => (
+                  <tr key={p.id}><td style={{ width: 36 }}><input type="checkbox" checked={chosen.has(p.id)} onChange={() => toggle(p.id)} /></td>
+                    <td>{p.full_name} <span className="small muted">@{p.username}</span>
+                      {!p.active && <span className="chip danger" style={{ marginLeft: ".4rem" }}>{t("disabled")}</span>}</td></tr>
+                ))}
+              </tbody></table>
+            </div>
+          </div>
+          <p className="small muted">{t("move_help")}</p>
+        </div>
+      )}
+      <div className="actions">
+        <button className="btn" onClick={() => close()}>{t("cancel")}</button>
+        <button className="btn primary" disabled={!dest || chosen.size === 0} onClick={() => void submit()}>
+          {t("move_btn", { n: chosen.size })}
+        </button>
+      </div>
+    </>
+  );
+}
+
 function NewDoctorForm({ close }: { close: (v?: { username: string; temporary_password: string }) => void }) {
   const { t } = useI18n();
   const { run } = useDialogs();
@@ -136,12 +198,19 @@ function NewDoctorForm({ close }: { close: (v?: { username: string; temporary_pa
 export function UsersPage() {
   const { t, locale } = useI18n();
   usePageTitle(t("nav_users"));
-  const { run, confirm, open, showSecret } = useDialogs();
+  const { run, confirm, open, showSecret, toast } = useDialogs();
   const [role, setRole] = useState("");
   const [q, setQ] = useState("");
   const [dq, setDq] = useState("");
   useEffect(() => { const id = setTimeout(() => setDq(q), 250); return () => clearTimeout(id); }, [q]);
   const users = useAsync(() => api.get<AdminUser[]>(`/api/admin/users?role=${role}&q=${encodeURIComponent(dq)}`), [role, dq]);
+  const docs = useAsync(() => api.get<AdminUser[]>("/api/admin/users?role=doctor"), []);
+
+  const move = async (source: AdminUser, preselect?: string[]) => {
+    const r = await open<{ moved: number; to: string }>(t("move_title"),
+      (close) => <MovePatientsForm source={source} doctors={docs.data ?? []} preselect={preselect} close={close} />, { wide: true, sticky: true });
+    if (r) { toast(t("move_done", { n: r.moved, to: r.to })); await Promise.all([users.reload(), docs.reload()]); }
+  };
 
   const create = async () => {
     const r = await open<{ username: string; temporary_password: string }>(t("new_doctor"), (close) => <NewDoctorForm close={close} />);
@@ -175,6 +244,15 @@ export function UsersPage() {
                   {u.must_change_password && <span className="chip warn" style={{ marginLeft: ".3rem" }}>{t("pw_pending")}</span>}</td>
                 <td className="small muted">{u.last_login_at ? D.dt(u.last_login_at, locale) : t("never")}</td>
                 <td className="right nowrap">
+                  {u.role === "doctor" && u.patients > 0 && (
+                    <><button className="btn sm" onClick={() => void move(u)}><Icon name="users" />{t("move_patients")}</button>{" "}</>
+                  )}
+                  {u.role === "patient" && u.doctor_id && docs.data && docs.data.length > 1 && (
+                    <><button className="btn sm" onClick={() => {
+                      const src = docs.data!.find((d) => d.id === u.doctor_id);
+                      if (src) void move(src, [u.id]);
+                    }}><Icon name="swap" />{t("move_patient")}</button>{" "}</>
+                  )}
                   <button className="btn sm" onClick={async () => {
                     await run(() => api.post(`/api/admin/users/${u.id}/active`, { active: !u.active }), t("saved"));
                     await users.reload();

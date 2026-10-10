@@ -39,7 +39,7 @@ Dalla pagina **Diete**, **Importa da PDF** carica `Franco.pdf` o `Giorgia.pdf`: 
 - **Alternative**: A, B, C… (con portata I/II e un eventuale massimo settimanale). Il paziente ne sceglie una. Un'alternativa «sempre inclusa» vale per tutte (es. contorno).
 - **Alimenti**: nome, quantità, unità, testo libero e, se vuoi, il **gruppo di sostituzione** (l'asterisco \* del piano cartaceo).
 - **Gruppi di sostituzione**: es. *Carne 200 g* con i suoi equivalenti (ricotta 120 g, pesce 220 g…). Le quantità proposte al paziente sono riproporzionate sulla quantità prevista.
-- **Indicazioni e conversioni**: indicazioni generali e tabella crudo/cotto, stampate nel PDF.
+- **Indicazioni e conversioni**: indicazioni generali e tabella di conversione **crudo/cotto** (per ogni alimento il peso a crudo e il peso equivalente a cotto, entrambi modificabili), mostrate al paziente e stampate nel PDF.
 - **Anteprima**: mostra il piano come lo vedrà il paziente.
 
 Premi **Salva** per applicare le modifiche. Per non perdere la storia del diario, quando cambi piano nel tempo crea una nuova dieta con **Assegna** e data di inizio: la precedente viene chiusa il giorno prima.
