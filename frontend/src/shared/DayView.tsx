@@ -214,11 +214,16 @@ function MealCard({ meal, editable, patientId, date, onDay }: {
     <div className={`card meal s-${meal.state}`}>
       {head}
       {meal.note && <p className="small muted">{meal.note}</p>}
-      <div className="seg">
+      <div className="seg seg-status">
         {seg.map(([s, k, c]) => (
           <button key={s} type="button" className={d.status === s ? `on ${c}`.trim() : ""} onClick={() => setD({ ...d, status: s })}>{t(k)}</button>
         ))}
       </div>
+      {/* on narrow screens the three choices become a dropdown */}
+      <select className="status-select" aria-label={t("status")} value={d.status}
+        onChange={(e) => setD({ ...d, status: e.target.value as Draft["status"] })}>
+        {seg.map(([s, k]) => <option key={s} value={s}>{t(k)}</option>)}
+      </select>
       {d.status === "done" && meal.kind === "extras" && meal.options.flatMap((o) => o.items).map((it) => {
         const c = d.extras[it.id] ?? 0;
         const used = it.week_used ?? 0;

@@ -10,6 +10,10 @@ RUN npm run build
 FROM python:3.12-slim
 
 ENV PYTHONUNBUFFERED=1 PIP_NO_CACHE_DIR=1
+# Release identification (git tag or commit), stamped by scripts/release.sh and shown in the web interface
+ARG APP_VERSION=
+ARG APP_COMMIT=
+ENV APP_VERSION=${APP_VERSION} APP_COMMIT=${APP_COMMIT}
 WORKDIR /srv
 
 COPY requirements.txt .

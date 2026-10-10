@@ -68,11 +68,12 @@ Requirements: Docker, `docker login` to Docker Hub, `zip` (or `python3`).
 DOCKERHUB_USER=<your-dockerhub-user> ./scripts/release.sh
 ```
 The script (`scripts/release.sh`):
-1. builds the image (multi-stage: compiles the React frontend, then packages the backend) and tags it `:<version>` and `:latest` (the version comes from `app/__init__.py`);
-2. pushes it to Docker Hub;
-3. creates **`dist/install.zip`** with `install.sh`, the production `docker-compose.yml`, `.env.example`, `release.conf` (pins the image version) and a short `README.md`.
+1. determines the **release version**: the git tag of the current commit (e.g. `v1.2.0`); if there is no tag, the short commit hash; a `-dirty` suffix is added when there are uncommitted changes (outside a git checkout it falls back to `app/__init__.py`). `--version` overrides it. The version is stamped into the image and shown in the web interface: on the login page and always in the top bar (hover it to see the commit);
+2. builds the image (multi-stage: compiles the React frontend, then packages the backend) and tags it `:<version>` and `:latest`;
+3. pushes it to Docker Hub;
+4. creates **`dist/install.zip`** with `install.sh`, the production `docker-compose.yml`, `.env.example`, `release.conf` (pins the image version) and a short `README.md`.
 
-Options: `--version 1.2.0` (explicit tag), `--no-push` (build locally and only create the zip), `PLATFORMS=linux/amd64,linux/arm64` (multi-architecture, needs `docker buildx`).
+Tag a release with `git tag v1.2.0` before running the script. Options: `--version 1.2.0` (explicit version), `--no-push` (build locally and only create the zip), `PLATFORMS=linux/amd64,linux/arm64` (multi-architecture, needs `docker buildx`).
 
 > If the Docker Hub repository is private, run `docker login` on the server before installing.
 

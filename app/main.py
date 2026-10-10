@@ -39,12 +39,12 @@ async def lifespan(app: FastAPI):
     metrics.install_log_handler()
     init_db(engine, SessionLocal)
     task = asyncio.create_task(_sampler())
-    log.info("Nutriplan %s avviato", __version__)
+    log.info("Nutriplan %s avviato", config.VERSION)
     yield
     task.cancel()
 
 
-app = FastAPI(title="Nutriplan", version=__version__, lifespan=lifespan, docs_url=None, redoc_url=None,
+app = FastAPI(title="Nutriplan", version=config.VERSION, lifespan=lifespan, docs_url=None, redoc_url=None,
               openapi_url=None)
 
 
@@ -85,7 +85,7 @@ for r in (auth.router, admin.router, patients.router, diets.router, reports.rout
 
 @app.get("/api/health")
 def health():
-    return {"status": "ok", "version": __version__}
+    return {"status": "ok", "version": config.VERSION, "commit": config.COMMIT}
 
 
 @app.get("/api/guide/{role}")

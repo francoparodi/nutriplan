@@ -53,3 +53,7 @@ In **Profile** you can optionally enter your **contacts** (phone, WhatsApp, Tele
 
 ## Forgot your password
 Contact your doctor: they will give you a new one-time temporary password to replace at login.
+
+---
+
+**Developer**: Franco Parodi – [franco.parodi@aol.com](mailto:franco.parodi@aol.com)

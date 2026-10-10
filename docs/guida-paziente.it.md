@@ -53,3 +53,7 @@ In **Profilo** puoi inserire, se vuoi, i tuoi **contatti** (telefono, WhatsApp, 
 
 ## Password dimenticata
 Contatta il medico: ti darà una nuova password temporanea monouso, da sostituire subito al login.
+
+---
+
+**Sviluppatore**: Franco Parodi – [franco.parodi@aol.com](mailto:franco.parodi@aol.com)

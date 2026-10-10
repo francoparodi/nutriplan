@@ -8,6 +8,7 @@ import { useI18n } from "../i18n";
 import { usePrefs } from "../prefs";
 import type { Warnings } from "../types";
 import { useTitleValue } from "./Title";
+import { useAppVersion, versionLabel } from "../lib/version";
 
 interface NavItem { to: string; icon: string; label: string; badge?: number; end?: boolean }
 
@@ -21,6 +22,7 @@ export function Shell() {
   const { t, lang, setLang } = useI18n();
   const { theme, setTheme, collapsed, setCollapsed } = usePrefs();
   const title = useTitleValue();
+  const ver = useAppVersion();
   const loc = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
   const [warn, setWarn] = useState(0);
@@ -96,6 +98,7 @@ export function Shell() {
         <header className="topbar">
           <button className="iconbtn" onClick={toggleMenu} aria-label="menu"><Icon name="menu" /></button>
           <h1 id="page-title">{title}</h1>
+          {ver && <span className="app-version" title={ver.commit ? `commit ${ver.commit}` : undefined}>{versionLabel(ver.version)}</span>}
         </header>
         <main className="content"><Outlet /></main>
       </div>

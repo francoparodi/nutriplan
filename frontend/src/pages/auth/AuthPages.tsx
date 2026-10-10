@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { HOME } from "../../lib/home";
+import { useAppVersion, versionLabel } from "../../lib/version";
 import { api } from "../../api";
 import { useAuth } from "../../auth";
 import { Field } from "../../components/Common";
@@ -9,6 +10,12 @@ import { Icon } from "../../components/Icon";
 import { useI18n } from "../../i18n";
 import { usePrefs } from "../../prefs";
 import { PasswordInput } from "../../components/PasswordInput";
+
+function AuthVersion() {
+  const v = useAppVersion();
+  if (!v) return null;
+  return <p className="auth-version" title={v.commit ? `commit ${v.commit}` : undefined}>Nutriplan {versionLabel(v.version)}</p>;
+}
 
 function AuthFrame({ children }: { children: React.ReactNode }) {
   const { lang, setLang, t } = useI18n();
@@ -37,6 +44,7 @@ function AuthFrame({ children }: { children: React.ReactNode }) {
       <div className="auth-wrap"><div className="auth-card">
         <div className="logo"><Icon name="logo" size={34} />Nutriplan</div>
         {children}
+        <AuthVersion />
       </div></div>
     </>
   );

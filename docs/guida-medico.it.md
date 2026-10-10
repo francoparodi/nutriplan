@@ -62,3 +62,7 @@ Nel **Profilo** puoi inserire facoltativamente telefono, WhatsApp, Telegram, Ins
 
 ## Profilo
 Cambia password, email, tema chiaro/scuro e lingua IT/EN.
+
+---
+
+**Sviluppatore**: Franco Parodi – [franco.parodi@aol.com](mailto:franco.parodi@aol.com)

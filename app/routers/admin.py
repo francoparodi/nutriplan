@@ -41,7 +41,7 @@ def overview(user: User = Depends(admin_user), db: Session = Depends(get_db)):
         dbsize = db.scalar(text("select pg_database_size(current_database())"))
     except Exception:
         dbsize = None
-    return {"version": __version__, "system": metrics.system_snapshot(), "online": online,
+    return {"version": config.VERSION, "commit": config.COMMIT, "system": metrics.system_snapshot(), "online": online,
             "online_count": len(online), "users": {"by_role": by_role, "inactive": inactive},
             "logins_today": logins_today, "actions_today": actions_today, "db_size": dbsize,
             "pending_doctors": db.scalar(select(func.count()).select_from(User).where(

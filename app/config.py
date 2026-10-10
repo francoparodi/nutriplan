@@ -1,6 +1,8 @@
 import os
 from zoneinfo import ZoneInfo
 
+from . import __version__
+
 
 def _bool(name: str, default: bool) -> bool:
     v = os.getenv(name)
@@ -26,3 +28,8 @@ METRICS_RETENTION_DAYS = 14
 LOG_RETENTION_DAYS = int(os.getenv("LOG_RETENTION_DAYS", "180"))
 # Password dell'utente "admin" creato al primo avvio (cambiarla dopo il primo accesso!).
 ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "admin123")
+
+# Version shown in the web interface. release.sh stamps the git tag (or the commit) into the image
+# as APP_VERSION; a source/dev run falls back to the version in app/__init__.py.
+VERSION = os.getenv("APP_VERSION") or f"{__version__}-dev"
+COMMIT = os.getenv("APP_COMMIT", "")

@@ -35,12 +35,17 @@ export function Markdown({ src }: { src: string }) {
   let key = 0;
   const inline = (s: string): ReactNode[] => {
     const res: ReactNode[] = [];
-    const re = /(\*\*[^*]+\*\*|\*[^*]+\*|`[^`]+`)/g;
+    const re = /(\[[^\]]+\]\([^)\s]+\)|\*\*[^*]+\*\*|\*[^*]+\*|`[^`]+`)/g;
     let last = 0, m: RegExpExecArray | null;
     while ((m = re.exec(s))) {
       if (m.index > last) res.push(s.slice(last, m.index));
       const tok = m[0];
-      if (tok.startsWith("**")) res.push(<strong key={key++}>{tok.slice(2, -2)}</strong>);
+      const link = /^\[([^\]]+)\]\(([^)\s]+)\)$/.exec(tok);
+      if (link) {
+        // only http(s) and mailto links are rendered as links
+        const href = /^(https?:|mailto:)/i.test(link[2]) ? link[2] : null;
+        res.push(href ? <a key={key++} href={href} target="_blank" rel="noopener noreferrer">{link[1]}</a> : link[1]);
+      } else if (tok.startsWith("**")) res.push(<strong key={key++}>{tok.slice(2, -2)}</strong>);
       else if (tok.startsWith("`")) res.push(<code key={key++}>{tok.slice(1, -1)}</code>);
       else res.push(<em key={key++}>{tok.slice(1, -1)}</em>);
       last = m.index + tok.length;
@@ -56,7 +61,10 @@ export function Markdown({ src }: { src: string }) {
   };
   for (const line of src.split("\n")) {
     let m: RegExpExecArray | null;
-    if ((m = /^(#{1,3})\s+(.*)$/.exec(line))) {
+    if (/^-{3,}\s*$/.test(line)) {
+      flushPara(); flushList();
+      out.push(<hr key={key++} />);
+    } else if ((m = /^(#{1,3})\s+(.*)$/.exec(line))) {
       flushPara(); flushList();
       const Tag = (`h${m[1].length}`) as "h1" | "h2" | "h3";
       out.push(<Tag key={key++}>{inline(m[2])}</Tag>);

@@ -62,3 +62,7 @@ In **Profile** you can optionally enter phone, WhatsApp, Telegram, Instagram, Fa
 
 ## Profile
 Change password, email, light/dark theme and IT/EN language.
+
+---
+
+**Developer**: Franco Parodi – [franco.parodi@aol.com](mailto:franco.parodi@aol.com)

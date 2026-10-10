@@ -224,3 +224,15 @@ input.qty-input.qty-changed[type=number] { border-color: var(--warn); background
   align-items: center; justify-content: center; border: 0; background: transparent; color: var(--muted); cursor: pointer; border-radius: 8px; }
 .pw-eye:hover { color: var(--text); background: var(--surface2); }
 .pw-eye svg { width: 20px; height: 20px; }
+
+/* release version: login page and top bar */
+.auth-version { text-align: center; color: var(--muted); font-size: .8rem; margin-top: 1rem; }
+.app-version { flex: none; color: var(--muted); font-size: .78rem; background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 999px; padding: .1rem .55rem; white-space: nowrap; max-width: 40vw; overflow: hidden; text-overflow: ellipsis; }
+
+/* meal status choice: buttons on wide screens, dropdown on phones */
+.status-select { display: none; }
+@media (max-width: 600px) {
+  .seg-status { display: none; }
+  .status-select { display: block; font-weight: 600; }
+}

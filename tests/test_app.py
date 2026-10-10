@@ -546,3 +546,10 @@ def test_conversion_raw_cooked_editable(login):
     pdf = med.get(f"/api/diets/{d['id']}/pdf")
     assert pdf.status_code == 200 and pdf.content[:4] == b"%PDF"
     med.delete(f"/api/diets/{d['id']}"); med.delete(f"/api/diets/{cp['id']}")
+
+
+def test_version_exposed_for_login_page_and_admin(login, app_client):
+    h = app_client.get("/api/health").json()      # public: used by the login page
+    assert h["status"] == "ok" and h["version"] and "commit" in h
+    ov = login("admin").get("/api/admin/overview").json()
+    assert ov["version"] == h["version"]
