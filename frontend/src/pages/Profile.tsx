@@ -11,6 +11,7 @@ import { usePageTitle } from "../layout/Title";
 import { VisitsView } from "../shared/Visits";
 import { ContactFields, ContactLinks } from "../components/Contacts";
 import type { Contacts, Patient, User } from "../types";
+import { PasswordInput } from "../components/PasswordInput";
 
 export function ProfilePage() {
   const { t } = useI18n();
@@ -99,9 +100,9 @@ export function ProfilePage() {
         <div className="card">
           <h2>{t("change_password")}</h2>
           <div className="col">
-            <Field label={t("current_password")}><input type="password" autoComplete="current-password" value={cur} onChange={(e) => setCur(e.target.value)} /></Field>
-            <Field label={t("new_password")}><input type="password" autoComplete="new-password" value={n1} onChange={(e) => setN1(e.target.value)} /></Field>
-            <Field label={t("repeat_password")}><input type="password" autoComplete="new-password" value={n2} onChange={(e) => setN2(e.target.value)} /></Field>
+            <Field label={t("current_password")}><PasswordInput autoComplete="current-password" value={cur} onChange={(e) => setCur(e.target.value)} /></Field>
+            <Field label={t("new_password")}><PasswordInput autoComplete="new-password" value={n1} onChange={(e) => setN1(e.target.value)} /></Field>
+            <Field label={t("repeat_password")}><PasswordInput autoComplete="new-password" value={n2} onChange={(e) => setN2(e.target.value)} /></Field>
             <p className="small muted">{t("password_rules")}</p>
             <div><button className="btn primary" onClick={async () => {
               if (n1 !== n2) return toast(t("err_password_mismatch"), true);

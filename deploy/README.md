@@ -29,10 +29,14 @@ NP_DOMAIN=nutriplan.example.org NP_ACME_EMAIL=me@example.org ./install.sh
 For a **local test** leave the domain empty (it becomes `localhost`) and open
 `https://localhost` (self-signed certificate: accept the browser warning).
 
-`install.sh` is always a **clean installation**. If it finds a previous
-installation (`.env`, `data/` folder or Nutriplan containers) it asks you to type
-`yes` and then **deletes everything** (database, documents, certificates) before
-installing. For unattended use set `NP_CONFIRM_RESET=yes`.
+On a clean folder `install.sh` simply installs. If it finds a previous
+installation (`.env`, `data/` folder or Nutriplan containers) it asks:
+
+1. **RESET** – delete everything (database, documents, certificates, settings) and install from scratch;
+2. **KEEP** – keep the database and the data intact, only apply the new release and settings;
+3. **CANCEL** (default) – do nothing.
+
+Unattended: `NP_INSTALL_MODE=reset|keep|cancel`.
 
 ## Data
 
@@ -42,14 +46,9 @@ database user: use `sudo` to copy it, or `pg_dump` (see below).
 
 ## Update
 
-Do **not** run `install.sh` (it resets everything). Unzip the newer `install.zip`
-over this folder (`.env` and `data/` are kept), then:
-
-```bash
-sed -i "s|^NUTRIPLAN_IMAGE=.*|$(cat release.conf)|" .env
-docker compose --env-file .env -f docker-compose.yml pull
-docker compose --env-file .env -f docker-compose.yml up -d
-```
+Unzip the newer `install.zip` over this folder (`.env` and `data/` are kept), run
+`./install.sh` and choose **2 – KEEP**: the database is left untouched and the new
+image is applied.
 
 ## Everyday commands
 

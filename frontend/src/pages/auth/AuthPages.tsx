@@ -8,6 +8,7 @@ import { useDialogs } from "../../components/Dialogs";
 import { Icon } from "../../components/Icon";
 import { useI18n } from "../../i18n";
 import { usePrefs } from "../../prefs";
+import { PasswordInput } from "../../components/PasswordInput";
 
 function AuthFrame({ children }: { children: React.ReactNode }) {
   const { lang, setLang, t } = useI18n();
@@ -63,7 +64,7 @@ export function LoginPage() {
             {sessionExpired && <div className="alert warn">{t("session_expired")}</div>}
             <Field label={t("username")}><input type="text" autoComplete="username" autoCapitalize="none" spellCheck={false}
               required autoFocus value={u} onChange={(e) => setU(e.target.value)} /></Field>
-            <Field label={t("password")}><input type="password" autoComplete="current-password" required
+            <Field label={t("password")}><PasswordInput autoComplete="current-password" required
               value={p} onChange={(e) => setP(e.target.value)} /></Field>
             {err && <div className="alert danger">{err}</div>}
             <button className="btn primary" type="submit" disabled={busy}>{t("login")}</button>
@@ -103,8 +104,8 @@ export function RegisterPage() {
               <Field label={t("full_name")} req><input type="text" value={f.full_name} onChange={set("full_name")} /></Field>
               <Field label={t("username")} req><input type="text" autoCapitalize="none" maxLength={32} value={f.username} onChange={set("username")} /></Field>
               <Field label={t("email")}><input type="email" value={f.email} onChange={set("email")} /></Field>
-              <Field label={t("password")} req><input type="password" autoComplete="new-password" value={f.password} onChange={set("password")} /></Field>
-              <Field label={t("repeat_password")} req><input type="password" autoComplete="new-password" value={f.password2} onChange={set("password2")} /></Field>
+              <Field label={t("password")} req><PasswordInput autoComplete="new-password" value={f.password} onChange={set("password")} /></Field>
+              <Field label={t("repeat_password")} req><PasswordInput autoComplete="new-password" value={f.password2} onChange={set("password2")} /></Field>
               <p className="small muted">{t("password_rules")}</p>
               <button className="btn primary" onClick={() => void submit()}>{t("register")}</button>
               <Link className="center" to="/login">{t("back_to_login")}</Link>
@@ -134,9 +135,9 @@ export function ForcedPasswordPage() {
         <h2>{t("must_change_title")}</h2>
         <p className="muted">{t("must_change_help")}</p>
         <div className="col">
-          <Field label={t("temporary_password")}><input type="password" autoComplete="current-password" value={cur} onChange={(e) => setCur(e.target.value)} /></Field>
-          <Field label={t("new_password")}><input type="password" autoComplete="new-password" value={n1} onChange={(e) => setN1(e.target.value)} /></Field>
-          <Field label={t("repeat_password")}><input type="password" autoComplete="new-password" value={n2} onChange={(e) => setN2(e.target.value)} /></Field>
+          <Field label={t("temporary_password")}><PasswordInput autoComplete="current-password" value={cur} onChange={(e) => setCur(e.target.value)} /></Field>
+          <Field label={t("new_password")}><PasswordInput autoComplete="new-password" value={n1} onChange={(e) => setN1(e.target.value)} /></Field>
+          <Field label={t("repeat_password")}><PasswordInput autoComplete="new-password" value={n2} onChange={(e) => setN2(e.target.value)} /></Field>
           <p className="small muted">{t("password_rules")}</p>
           <button className="btn primary" onClick={() => void submit()}>{t("change_password")}</button>
           <button className="btn" onClick={() => void logout()}>{t("logout")}</button>

@@ -147,6 +147,7 @@ export const DICT: Record<Lang, Record<string, string>> = {
     move_need_target: "Serve un altro medico attivo come destinazione.", move_need_patients: "Seleziona almeno un paziente.",
     err_same_doctor: "Il medico di partenza e di destinazione coincidono.", err_doctor_inactive: "Il medico di destinazione non è attivo.",
     err_no_patients: "Nessun paziente da spostare.",
+    show_password: "Mostra password", hide_password: "Nascondi password",
     copy_failed: "Copia non riuscita: seleziona il testo e copialo manualmente.",
     file_pick: "Scegli file", files_pick: "Scegli file", file_none: "Nessun file selezionato", files_n: "{n} file selezionati",
 
@@ -284,6 +285,7 @@ export const DICT: Record<Lang, Record<string, string>> = {
     move_need_target: "Another active doctor is needed as the target.", move_need_patients: "Select at least one patient.",
     err_same_doctor: "Source and target doctor are the same.", err_doctor_inactive: "The target doctor is not active.",
     err_no_patients: "No patients to move.",
+    show_password: "Show password", hide_password: "Hide password",
     copy_failed: "Copy failed: select the text and copy it manually.",
     file_pick: "Choose file", files_pick: "Choose files", file_none: "No file selected", files_n: "{n} files selected",
     status_: "Status", role_: "Role", kind_: "Type", col_: "",

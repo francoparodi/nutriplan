@@ -216,3 +216,11 @@ input.qty-input.qty-changed[type=number] { border-color: var(--warn); background
 .btn.wrap .nowrap { flex: none; }
 .sub-row > span, .item > span:first-child { min-width: 0; overflow-wrap: anywhere; }
 .modal { max-width: 100%; overflow-wrap: anywhere; }
+
+/* password field with show/hide button */
+.pw-wrap { position: relative; display: block; }
+.pw-wrap input { padding-right: 2.7rem; }
+.pw-eye { position: absolute; right: 2px; top: 50%; transform: translateY(-50%); width: 36px; height: 36px; display: inline-flex;
+  align-items: center; justify-content: center; border: 0; background: transparent; color: var(--muted); cursor: pointer; border-radius: 8px; }
+.pw-eye:hover { color: var(--text); background: var(--surface2); }
+.pw-eye svg { width: 20px; height: 20px; }
